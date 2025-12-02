@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Cheque Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
+    <!-- SheetJS for Excel operations -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-money-check-alt"></i>
+                <h1>ChequePro Manager</h1>
+            </div>
+            <div class="user-info">
+                <span>Welcome, Admin</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <nav class="nav-menu">
+                    <ul>
+                        <li class="active" data-tab="cheque-entry">
+                            <i class="fas fa-plus-circle"></i> Cheque Entry
+                        </li>
+                        <li data-tab="cheque-list">
+                            <i class="fas fa-list"></i> Cheque List
+                        </li>
+                        <li data-tab="deposit-slip">
+                            <i class="fas fa-print"></i> Deposit Slip
+                        </li>
+                        <li data-tab="excel-export">
+                            <i class="fas fa-file-excel"></i> Excel Operations
+                        </li>
+                        <li data-tab="settings">
+                            <i class="fas fa-cog"></i> Settings
+                        </li>
+                    </ul>
+                </nav>
+                
+                <div class="stats">
+                    <h3>Today's Summary</h3>
+                    <div class="stat-item">
+                        <span>Cheques Processed</span>
+                        <span class="stat-value" id="processed-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Total Amount</span>
+                        <span class="stat-value" id="total-amount">$0.00</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content-area">
+                <!-- Cheque Entry Tab -->
+                <div id="cheque-entry" class="tab-content active">
+                    <div class="tab-header">
+                        <h2><i class="fas fa-edit"></i> Cheque Entry</h2>
+                        <p>Upload cheque image or enter details manually</p>
+                    </div>
+                    
+                    <div class="entry-container">
+                        <!-- Image Upload Section -->
+                        <div class="upload-section">
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <h3>Upload Cheque Image</h3>
+                                <p>Drag & drop or click to browse</p>
+                                <input type="file" id="imageUpload" accept="image/*" capture="environment">
+                                <button class="btn secondary" id="captureBtn">
+                                    <i class="fas fa-camera"></i> Take Photo
+                                </button>
+                            </div>
+                            
+                            <div class="preview-container">
+                                <h3>Image Preview</h3>
+                                <div class="image-preview" id="imagePreview">
+                                    <p>No image selected</p>
+                                </div>
+                                <button class="btn" id="extractBtn" disabled>
+                                    <i class="fas fa-bolt"></i> Extract Data
+                                </button>
+                                <div class="ocr-status" id="ocrStatus"></div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Entry Form -->
+                        <div class="form-section">
+                            <h3><i class="fas fa-keyboard"></i> Manual Entry Form</h3>
+                            <form id="chequeForm">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="chequeNo"><i class="fas fa-hashtag"></i> Cheque Number</label>
+                                        <input type="text" id="chequeNo" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="amount"><i class="fas fa-dollar-sign"></i> Amount</label>
+                                        <input type="number" id="amount" step="0.01" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="bankName"><i class="fas fa-university"></i> Bank Name</label>
+                                        <input type="text" id="bankName" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="branch"><i class="fas fa-code-branch"></i> Branch</label>
+                                        <input type="text" id="branch">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="payee"><i class="fas fa-user"></i> Payee Name</label>
+                                    <input type="text" id="payee" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="accountNo"><i class="fas fa-credit-card"></i> Account Number</label>
+                                    <input type="text" id="accountNo">
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="dateIssued"><i class="fas fa-calendar-alt"></i> Date Issued</label>
+                                        <input type="date" id="dateIssued" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="dateDeposited"><i class="fas fa-calendar-check"></i> Date to Deposit</label>
+                                        <input type="date" id="dateDeposited" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="notes"><i class="fas fa-sticky-note"></i> Notes</label>
+                                    <textarea id="notes" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="reset" class="btn secondary">
+                                        <i class="fas fa-redo"></i> Clear
+                                    </button>
+                                    <button type="submit" class="btn primary">
+                                        <i class="fas fa-save"></i> Save Cheque
+                                    </button>
+                                    <button type="button" class="btn success" id="generateDepositBtn">
+                                        <i class="fas fa-receipt"></i> Generate Deposit Slip
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cheque List Tab -->
+                <div id="cheque-list" class="tab-content">
+                    <div class="tab-header">
+                        <h2><i class="fas fa-list"></i> Cheque List</h2>
+                        <div class="tab-actions">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchInput" placeholder="Search cheques...">
+                            </div>
+                            <button class="btn" id="refreshList">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="cheque-table-container">
+                        <table class="cheque-table">
+                            <thead>
+                                <tr>
+                                    <th>Cheque No</th>
+                                    <th>Payee</th>
+                                    <th>Bank</th>
+                                    <th>Amount</th>
+                                    <th>Date Issued</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chequeTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Deposit Slip Tab -->
+                <div id="deposit-slip" class="tab-content">
+                    <div class="tab-header">
+                        <h2><i class="fas fa-print"></i> Deposit Slip Generator</h2>
+                    </div>
+                    <div class="deposit-container">
+                        <div class="deposit-controls">
+                            <button class="btn" id="selectAllCheques">
+                                <i class="fas fa-check-square"></i> Select All
+                            </button>
+                            <button class="btn secondary" id="clearSelection">
+                                <i class="fas fa-times-circle"></i> Clear Selection
+                            </button>
+                            <button class="btn success" id="printDepositSlip">
+                                <i class="fas fa-print"></i> Print Deposit Slip
+                            </button>
+                            <button class="btn primary" id="saveDepositPDF">
+                                <i class="fas fa-file-pdf"></i> Save as PDF
+                            </button>
+                        </div>
+                        
+                        <div class="deposit-preview" id="depositPreview">
+                            <!-- Deposit slip preview will be generated here -->
+                            <div class="deposit-slip-template">
+                                <div class="deposit-header">
+                                    <h2>BANK DEPOSIT SLIP</h2>
+                                    <div class="deposit-date">
+                                        Date: <span id="slipDate"></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="deposit-body">
+                                    <div class="account-info">
+                                        <p><strong>Account Holder:</strong> <span id="accountHolder">Your Name</span></p>
+                                        <p><strong>Account Number:</strong> <span id="accountNumber">XXXX-XXXX-XXXX</span></p>
+                                        <p><strong>Bank Name:</strong> <span id="bankNameSlip">Your Bank</span></p>
+                                    </div>
+                                    
+                                    <table class="deposit-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Cheque No</th>
+                                                <th>Bank</th>
+                                                <th>Payee</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="depositTableBody">
+                                            <!-- Cheque rows will be added here -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                                                <td id="depositTotal">$0.00</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                    
+                                    <div class="deposit-footer">
+                                        <div class="signature">
+                                            <p>Signature: _________________________</p>
+                                        </div>
+                                        <div class="deposit-notes">
+                                            <p><strong>Notes:</strong> <span id="slipNotes">All cheques are properly endorsed</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Excel Export Tab -->
+                <div id="excel-export" class="tab-content">
+                    <div class="tab-header">
+                        <h2><i class="fas fa-file-excel"></i> Excel Operations</h2>
+                    </div>
+                    
+                    <div class="excel-controls">
+                        <div class="excel-card">
+                            <i class="fas fa-file-export"></i>
+                            <h3>Export to Excel</h3>
+                            <p>Export all cheque data to a new Excel file</p>
+                            <button class="btn success" id="exportExcel">
+                                <i class="fas fa-download"></i> Export New File
+                            </button>
+                        </div>
+                        
+                        <div class="excel-card">
+                            <i class="fas fa-sync-alt"></i>
+                            <h3>Update Existing File</h3>
+                            <p>Update your existing Excel file with new data</p>
+                            <button class="btn primary" id="updateExcel">
+                                <i class="fas fa-upload"></i> Update Existing File
+                            </button>
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
+                        </div>
+                        
+                        <div class="excel-card">
+                            <i class="fas fa-file-import"></i>
+                            <h3>Import from Excel</h3>
+                            <p>Import cheque data from existing Excel file</p>
+                            <button class="btn secondary" id="importExcel">
+                                <i class="fas fa-file-import"></i> Import Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="excel-preview">
+                        <h3>Data Preview (First 10 records)</h3>
+                        <div id="excelPreview">
+                            <!-- Excel data preview will be shown here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings" class="tab-content">
+                    <div class="tab-header">
+                        <h2><i class="fas fa-cog"></i> Settings</h2>
+                    </div>
+                    
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-user-cog"></i> User Preferences</h3>
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label for="defaultBank"><i class="fas fa-university"></i> Default Bank Name</label>
+                                    <input type="text" id="defaultBank" placeholder="Enter default bank name">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="defaultAccount"><i class="fas fa-credit-card"></i> Default Account Number</label>
+                                    <input type="text" id="defaultAccount" placeholder="Enter default account number">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="dateFormat"><i class="fas fa-calendar"></i> Date Format</label>
+                                    <select id="dateFormat">
+                                        <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                                        <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                                        <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="currency"><i class="fas fa-dollar-sign"></i> Currency</label>
+                                    <select id="currency">
+                                        <option value="USD">USD ($)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="GBP">GBP (£)</option>
+                                        <option value="CAD">CAD (C$)</option>
+                                        <option value="AUD">AUD (A$)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3><i class="fas fa-camera"></i> OCR Settings</h3>
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label for="ocrLanguage"><i class="fas fa-language"></i> OCR Language</label>
+                                    <select id="ocrLanguage">
+                                        <option value="eng">English</option>
+                                        <option value="fra">French</option>
+                                        <option value="spa">Spanish</option>
+                                        <option value="deu">German</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="autoExtract">
+                                        <input type="checkbox" id="autoExtract">
+                                        Auto-extract data on upload
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="saveImage">
+                                        <input type="checkbox" id="saveImage" checked>
+                                        Save cheque images
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button class="btn secondary" id="resetSettings">
+                                <i class="fas fa-undo"></i> Reset to Default
+                            </button>
+                            <button class="btn primary" id="saveSettings">
+                                <i class="fas fa-save"></i> Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>ChequePro Manager &copy; 2024 | Secure Cheque Processing System</p>
+            <div class="footer-links">
+                <span id="dataCount">0 cheques stored</span>
+                <span id="lastSaved">Last saved: Never</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for Edit -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Cheque Details</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Edit form will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Capture Cheque Photo</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video id="cameraPreview" autoplay></video>
+                    <div class="camera-controls">
+                        <button class="btn" id="capturePhotoBtn">
+                            <i class="fas fa-camera"></i> Capture
+                        </button>
+                        <button class="btn secondary" id="switchCamera">
+                            <i class="fas fa-sync-alt"></i> Switch Camera
+                        </button>
+                    </div>
+                </div>
+                <canvas id="photoCanvas" style="display:none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
