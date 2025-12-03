@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChequePro Manager</title>
-    <!-- Font Awesome -->
+    <title>ChequePro Manager - Deposit Slip System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- CSS -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Excel Export Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -72,12 +74,16 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="global-search" placeholder="Search cheques, accounts...">
                     </div>
+                    <div class="export-notification" id="export-notification" style="display: none;">
+                        <span id="new-cheques-count">0</span> new cheques
+                        <button class="btn btn-sm btn-primary" onclick="exportUpdates()">Export Now</button>
+                    </div>
                     <button class="btn btn-primary" id="upload-cheque-btn">
-                        <i class="fas fa-camera"></i> Upload Cheque
+                        <i class="fas fa-plus"></i> Add Cheque
                     </button>
                     <div class="notifications">
                         <i class="fas fa-bell"></i>
-                        <span class="badge">3</span>
+                        <span class="badge">0</span>
                     </div>
                 </div>
             </header>
@@ -110,12 +116,12 @@
                         </div>
                         <div class="stat-card stat-card-orange">
                             <div class="stat-icon">
-                                <i class="fas fa-university"></i>
+                                <i class="fas fa-file-excel"></i>
                             </div>
                             <div class="stat-info">
-                                <h3>To Deposit</h3>
-                                <p class="stat-value" id="pending-deposit">0</p>
-                                <span class="stat-change" id="deposit-notification">No cheques this week</span>
+                                <h3>To Export</h3>
+                                <p class="stat-value" id="unexported-cheques">0</p>
+                                <span class="stat-change" id="export-notification-text">No new cheques</span>
                             </div>
                         </div>
                         <div class="stat-card stat-card-purple">
@@ -130,60 +136,58 @@
                         </div>
                     </div>
 
-                    <!-- Weekly Cheques Section -->
+                    <!-- Quick Actions -->
                     <div class="dashboard-section">
                         <div class="section-header">
-                            <h3><i class="fas fa-calendar-week"></i> This Week's Cheques</h3>
-                            <button class="btn btn-outline" id="view-all-week">View All</button>
+                            <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                        </div>
+                        <div class="quick-actions">
+                            <button class="quick-action-btn" onclick="exportFullExcel()">
+                                <i class="fas fa-file-excel"></i>
+                                <span>Export Full Excel</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="exportUpdates()">
+                                <i class="fas fa-sync"></i>
+                                <span>Export Updates</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="showPage('cheque-entry')">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Add New Cheque</span>
+                            </button>
+                            <button class="quick-action-btn" onclick="showPage('deposit-slip')">
+                                <i class="fas fa-print"></i>
+                                <span>Generate Deposit Slip</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Cheques -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-history"></i> Recent Cheques</h3>
+                            <button class="btn btn-outline" onclick="showPage('cheque-list')">
+                                View All
+                            </button>
                         </div>
                         <div class="table-container">
-                            <table id="weekly-cheques-table">
+                            <table id="recent-cheques-table">
                                 <thead>
                                     <tr>
+                                        <th>Date</th>
                                         <th>Cheque No</th>
                                         <th>Bank</th>
                                         <th>Payee</th>
                                         <th>Amount</th>
-                                        <th>Date</th>
                                         <th>Status</th>
-                                        <th>Action</th>
+                                        <th>Exported</th>
                                     </tr>
                                 </thead>
-                                <tbody id="weekly-cheques-body">
-                                    <!-- Dynamic content -->
+                                <tbody id="recent-cheques-body">
+                                    <tr>
+                                        <td colspan="7" class="no-data">No cheques added yet</td>
+                                    </tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-
-                    <!-- Bank Distribution -->
-                    <div class="dashboard-row">
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-landmark"></i> Banks Distribution</h3>
-                            </div>
-                            <div class="card-body">
-                                <div id="banks-chart">
-                                    <!-- Chart will be here -->
-                                    <div class="no-data">No bank data available</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-chart-line"></i> Recent Activity</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="activity-list" id="recent-activity">
-                                    <div class="activity-item">
-                                        <i class="fas fa-plus-circle activity-icon"></i>
-                                        <div class="activity-content">
-                                            <p>No recent activity</p>
-                                            <span class="activity-time">--</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </section>
@@ -194,109 +198,89 @@
                         <h2><i class="fas fa-plus-circle"></i> Add New Cheque</h2>
                     </div>
                     
-                    <div class="entry-container">
-                        <div class="upload-section">
-                            <div class="upload-card">
-                                <h3><i class="fas fa-camera"></i> Upload Cheque Image/PDF</h3>
-                                <div class="upload-area" id="uploadArea">
-                                    <input type="file" id="chequeFile" accept="image/*,.pdf" style="display: none;">
-                                    <div class="upload-prompt" id="uploadPrompt">
-                                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                                        <p>Drag & drop cheque image or PDF here</p>
-                                        <p class="upload-subtext">or</p>
-                                        <button class="btn btn-primary" onclick="document.getElementById('chequeFile').click()">
-                                            Browse Files
-                                        </button>
-                                        <p class="upload-formats">Supports: JPG, PNG, PDF</p>
-                                    </div>
-                                    <div class="image-preview" id="imagePreview" style="display: none;">
-                                        <div class="preview-header">
-                                            <h4>Preview</h4>
-                                            <button class="btn-icon" onclick="retakePhoto()">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                        <img id="previewImage" alt="Cheque Preview">
-                                        <div class="preview-actions">
-                                            <button class="btn btn-secondary" onclick="retakePhoto()">
-                                                <i class="fas fa-redo"></i> Retake
-                                            </button>
-                                            <button class="btn btn-primary" onclick="processCheque()">
-                                                <i class="fas fa-magic"></i> Extract Data
-                                            </button>
-                                        </div>
-                                    </div>
+                    <div class="form-card">
+                        <form id="chequeForm">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label><i class="fas fa-calendar"></i> Cheque Date *</label>
+                                    <input type="date" id="chequeDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-hashtag"></i> Cheque Number *</label>
+                                    <input type="text" id="chequeNumber" class="form-control" required placeholder="e.g., 123456">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-landmark"></i> Bank Name *</label>
+                                    <select id="bankName" class="form-control" required>
+                                        <option value="">Select Bank</option>
+                                        <option value="People's Bank">People's Bank</option>
+                                        <option value="Bank of Ceylon">Bank of Ceylon</option>
+                                        <option value="Commercial Bank">Commercial Bank</option>
+                                        <option value="HNB">HNB</option>
+                                        <option value="Sampath Bank">Sampath Bank</option>
+                                        <option value="DFCC Bank">DFCC Bank</option>
+                                        <option value="NDB Bank">NDB Bank</option>
+                                        <option value="Seylan Bank">Seylan Bank</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-code-branch"></i> Bank Branch *</label>
+                                    <select id="branch" class="form-control" required>
+                                        <option value="">Select Branch</option>
+                                        <!-- Dynamically populated -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-hashtag"></i> Bank Code</label>
+                                    <input type="text" id="bankCode" class="form-control" placeholder="Branch code">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-user"></i> Payee Name *</label>
+                                    <input type="text" id="payee" class="form-control" required placeholder="Name of the payee">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-id-card"></i> Account Holder</label>
+                                    <input type="text" id="accountHolder" class="form-control" placeholder="Name on the account">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-credit-card"></i> Account Number</label>
+                                    <input type="text" id="accountNumber" class="form-control" placeholder="Account number">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-rupee-sign"></i> Amount (LKR) *</label>
+                                    <input type="number" id="amount" class="form-control" step="0.01" required placeholder="0.00">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label><i class="fas fa-font"></i> Amount in Words</label>
+                                    <textarea id="amountWords" class="form-control" rows="2" placeholder="Amount in words (auto-generated)"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-tag"></i> Status</label>
+                                    <select id="status" class="form-control">
+                                        <option value="pending">Pending</option>
+                                        <option value="deposited">Deposited</option>
+                                        <option value="cleared">Cleared</option>
+                                        <option value="bounced">Bounced</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-sticky-note"></i> Notes</label>
+                                    <textarea id="notes" class="form-control" rows="2" placeholder="Additional notes"></textarea>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="form-section">
-                            <div class="form-card">
-                                <h3><i class="fas fa-edit"></i> Cheque Details</h3>
-                                <form id="chequeForm">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label><i class="fas fa-landmark"></i> Bank Name *</label>
-                                            <input type="text" id="bankName" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-code-branch"></i> Branch *</label>
-                                            <input type="text" id="branch" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-hashtag"></i> Account Number *</label>
-                                            <input type="text" id="accountNumber" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-file-alt"></i> Cheque Number *</label>
-                                            <input type="text" id="chequeNumber" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-user"></i> Payee Name *</label>
-                                            <input type="text" id="payee" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-id-card"></i> NIC Number</label>
-                                            <input type="text" id="nicNumber" class="form-control">
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <label><i class="fas fa-font"></i> Amount in Words *</label>
-                                            <textarea id="amountWords" class="form-control" rows="2" required></textarea>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-rupee-sign"></i> Amount (LKR) *</label>
-                                            <input type="number" id="amountNumbers" class="form-control" step="0.01" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-calendar"></i> Cheque Date *</label>
-                                            <input type="date" id="chequeDate" class="form-control" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-barcode"></i> MICR Code</label>
-                                            <input type="text" id="micrCode" class="form-control">
-                                        </div>
-                                        <div class="form-group">
-                                            <label><i class="fas fa-tag"></i> Status</label>
-                                            <select id="status" class="form-control">
-                                                <option value="pending">Pending</option>
-                                                <option value="processed">Processed</option>
-                                                <option value="deposited">Deposited</option>
-                                                <option value="cancelled">Cancelled</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-actions">
-                                        <button type="button" class="btn btn-secondary" onclick="clearForm()">
-                                            <i class="fas fa-times"></i> Clear
-                                        </button>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save"></i> Save Cheque
-                                        </button>
-                                    </div>
-                                </form>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="clearForm()">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Cheque
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="saveAndAddAnother()">
+                                    <i class="fas fa-plus-circle"></i> Save & Add Another
+                                </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </section>
 
@@ -305,10 +289,27 @@
                     <div class="section-header">
                         <h2><i class="fas fa-list"></i> All Cheques</h2>
                         <div class="header-actions">
-                            <button class="btn btn-outline" onclick="exportToExcel()">
-                                <i class="fas fa-file-excel"></i> Export Excel
-                            </button>
-                            <button class="btn btn-primary" onclick="openFilterModal()">
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown">
+                                    <i class="fas fa-file-excel"></i> Export Excel
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="exportDropdown">
+                                    <a class="dropdown-item" href="#" onclick="exportFullExcel()">
+                                        <i class="fas fa-download"></i> Full Export (All Data)
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="exportUpdates()">
+                                        <i class="fas fa-sync"></i> Update Export (New Only)
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="exportDateRange()">
+                                        <i class="fas fa-calendar-alt"></i> Date Range Export
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" onclick="markAllExported()">
+                                        <i class="fas fa-check-double"></i> Mark All as Exported
+                                    </a>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline" onclick="openFilterModal()">
                                 <i class="fas fa-filter"></i> Filter
                             </button>
                         </div>
@@ -321,8 +322,10 @@
                             <input type="text" id="search-cheques" placeholder="Search by cheque no, payee, bank..." 
                                    onkeyup="searchCheques()">
                         </div>
-                        <div class="filter-tags" id="filter-tags">
-                            <!-- Active filters will appear here -->
+                        <div class="filter-badges">
+                            <span class="filter-badge" id="total-count">Total: 0</span>
+                            <span class="filter-badge" id="unexported-count">Unexported: 0</span>
+                            <span class="filter-badge" id="pending-count">Pending: 0</span>
                         </div>
                     </div>
 
@@ -331,20 +334,41 @@
                             <thead>
                                 <tr>
                                     <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+                                    <th>Date</th>
                                     <th>Cheque No</th>
                                     <th>Bank</th>
                                     <th>Branch</th>
                                     <th>Payee</th>
                                     <th>Amount</th>
-                                    <th>Date</th>
                                     <th>Status</th>
+                                    <th>Exported</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="cheques-body">
-                                <!-- Dynamic content -->
+                                <tr>
+                                    <td colspan="10" class="no-data">No cheques found. Add your first cheque!</td>
+                                </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Bulk Actions -->
+                    <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                        <div class="bulk-info">
+                            <span id="selected-count">0</span> cheques selected
+                        </div>
+                        <div class="bulk-buttons">
+                            <button class="btn btn-sm btn-outline" onclick="markSelectedExported()">
+                                <i class="fas fa-check"></i> Mark as Exported
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="markSelectedDeposited()">
+                                <i class="fas fa-university"></i> Mark as Deposited
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteSelected()">
+                                <i class="fas fa-trash"></i> Delete Selected
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Pagination -->
@@ -363,8 +387,14 @@
                             <button class="btn btn-outline" onclick="clearSelected()">
                                 <i class="fas fa-times"></i> Clear Selection
                             </button>
-                            <button class="btn btn-primary" onclick="generateDepositSlip()">
-                                <i class="fas fa-print"></i> Generate Slip
+                            <button class="btn btn-outline" onclick="enableManualEntry()">
+                                <i class="fas fa-keyboard"></i> Manual Entry
+                            </button>
+                            <button class="btn btn-primary" onclick="printDepositSlip()">
+                                <i class="fas fa-print"></i> Print Slip
+                            </button>
+                            <button class="btn btn-success" onclick="saveDepositSlipPDF()">
+                                <i class="fas fa-file-pdf"></i> Save as PDF
                             </button>
                         </div>
                     </div>
@@ -372,18 +402,18 @@
                     <div class="deposit-container">
                         <div class="deposit-left">
                             <div class="deposit-card">
-                                <h3><i class="fas fa-check-circle"></i> Selected Cheques</h3>
+                                <h3><i class="fas fa-check-circle"></i> Selected Cheques (Max: 6)</h3>
                                 <div class="selected-list" id="selected-cheques">
                                     <div class="no-selection">
                                         <i class="fas fa-receipt"></i>
                                         <p>No cheques selected</p>
-                                        <small>Select cheques from the list to include in deposit slip</small>
+                                        <small>Select cheques from list or use manual entry</small>
                                     </div>
                                 </div>
                                 <div class="selected-summary">
                                     <div class="summary-item">
-                                        <span>Total Cheques:</span>
-                                        <strong id="selected-count">0</strong>
+                                        <span>Selected:</span>
+                                        <strong id="selected-count">0/6</strong>
                                     </div>
                                     <div class="summary-item">
                                         <span>Total Amount:</span>
@@ -391,44 +421,151 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="deposit-right">
+
                             <div class="deposit-card">
                                 <h3><i class="fas fa-cog"></i> Deposit Details</h3>
                                 <form id="depositForm">
                                     <div class="form-group">
                                         <label><i class="fas fa-calendar"></i> Deposit Date *</label>
-                                        <input type="date" id="depositDate" class="form-control" required>
+                                        <input type="date" id="depositDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
                                     </div>
                                     <div class="form-group">
-                                        <label><i class="fas fa-landmark"></i> Deposit Bank *</label>
-                                        <select id="depositBank" class="form-control" required>
-                                            <option value="">Select Bank</option>
-                                            <option value="People's Bank">People's Bank</option>
-                                            <option value="Bank of Ceylon">Bank of Ceylon</option>
-                                            <option value="Commercial Bank">Commercial Bank</option>
-                                            <option value="HNB">HNB</option>
-                                            <option value="Sampath Bank">Sampath Bank</option>
-                                        </select>
+                                        <label><i class="fas fa-user"></i> Account Holder Name *</label>
+                                        <input type="text" id="depositorName" class="form-control" required 
+                                               placeholder="Account holder name" value="John Doe">
                                     </div>
                                     <div class="form-group">
-                                        <label><i class="fas fa-code-branch"></i> Deposit Branch *</label>
-                                        <input type="text" id="depositBranch" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fas fa-hashtag"></i> Account Number *</label>
-                                        <input type="text" id="depositAccount" class="form-control" required>
+                                        <label><i class="fas fa-id-card"></i> Account Number *</label>
+                                        <input type="text" id="depositorAccount" class="form-control" required 
+                                               placeholder="e.g., 6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1..." 
+                                               value="6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1.1.1.1">
                                     </div>
                                     <div class="form-group">
                                         <label><i class="fas fa-sticky-note"></i> Reference Number</label>
-                                        <input type="text" id="depositRef" class="form-control">
+                                        <input type="text" id="depositRef" class="form-control" placeholder="Optional reference">
                                     </div>
                                     <div class="form-group">
-                                        <label><i class="fas fa-comment"></i> Notes</label>
-                                        <textarea id="depositNotes" class="form-control" rows="3"></textarea>
+                                        <label><i class="fas fa-exchange-alt"></i> Mode</label>
+                                        <select id="depositMode" class="form-control" onchange="toggleDepositMode()">
+                                            <option value="auto">Auto from Cheques</option>
+                                            <option value="manual">Manual Entry</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Manual Entry Fields -->
+                                    <div id="manual-entry-fields" style="display: none;">
+                                        <h4 style="margin-top: 20px; margin-bottom: 15px;">
+                                            <i class="fas fa-edit"></i> Manual Cheque Entry
+                                        </h4>
+                                        <div id="manual-cheque-entries">
+                                            <!-- Manual entries will be added here -->
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="addManualCheque()" style="margin-top: 10px;">
+                                            <i class="fas fa-plus"></i> Add Cheque
+                                        </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                        
+                        <div class="deposit-right">
+                            <div class="deposit-card">
+                                <h3><i class="fas fa-print"></i> Deposit Slip Preview</h3>
+                                <div class="slip-container">
+                                    <!-- Custom Deposit Slip Format -->
+                                    <div class="deposit-slip" id="depositSlip">
+                                        <!-- Header -->
+                                        <div class="slip-header">
+                                            <div class="bank-name">YOUR BANK NAME</div>
+                                            <div class="slip-title">DEPOSIT SLIP</div>
+                                            <div class="slip-date">Date: <span id="slip-date"><?php echo date('d/m/Y'); ?></span></div>
+                                        </div>
+                                        
+                                        <!-- Account Number -->
+                                        <div class="account-section">
+                                            <div class="account-label">Account Number:</div>
+                                            <div class="account-number-display" id="account-display">
+                                                6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1...
+                                            </div>
+                                            <div class="account-number-boxes" id="account-boxes">
+                                                <!-- Individual boxes will be inserted here -->
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Account Holder -->
+                                        <div class="account-holder-section">
+                                            <div class="account-label">Account Holder:</div>
+                                            <div class="holder-name" id="holder-name">____________________</div>
+                                        </div>
+                                        
+                                        <!-- Amount -->
+                                        <div class="amount-section">
+                                            <div class="amount-label">Amount (in words):</div>
+                                            <div class="amount-words" id="amount-words">
+                                                ____________________________________________________________
+                                            </div>
+                                            <div class="amount-numbers" id="amount-numbers">
+                                                LKR 0.00
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Cheque Table -->
+                                        <div class="cheque-table">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 20%;">Cheque No</th>
+                                                        <th style="width: 15%;">Bank Code</th>
+                                                        <th style="width: 40%;">Payee</th>
+                                                        <th style="width: 25%;">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="slip-cheque-body">
+                                                    <!-- Cheque rows will be inserted here -->
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <!-- Total -->
+                                        <div class="total-section">
+                                            <div class="total-label">Total Amount:</div>
+                                            <div class="total-amount" id="total-amount-display">LKR 0.00</div>
+                                        </div>
+                                        
+                                        <!-- Signatures -->
+                                        <div class="signature-section">
+                                            <div class="signature depositor-sign">
+                                                <div class="signature-label">Depositor's Signature:</div>
+                                                <div class="signature-line">____________________</div>
+                                            </div>
+                                            <div class="signature teller-sign">
+                                                <div class="signature-label">Teller's Signature:</div>
+                                                <div class="signature-line">____________________</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Footer -->
+                                        <div class="slip-footer">
+                                            <div class="footer-note">* Please ensure all details are correct before submission</div>
+                                            <div class="print-info">Printed: <span id="print-time"><?php echo date('H:i:s'); ?></span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="slip-actions">
+                                    <button class="btn btn-sm btn-outline" onclick="refreshSlipPreview()">
+                                        <i class="fas fa-sync"></i> Refresh Preview
+                                    </button>
+                                    <button class="btn btn-sm btn-outline" onclick="resetSlip()">
+                                        <i class="fas fa-redo"></i> Reset
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -439,24 +576,56 @@
                     <div class="section-header">
                         <h2><i class="fas fa-chart-bar"></i> Reports & Analytics</h2>
                         <div class="header-actions">
-                            <div class="date-range">
-                                <input type="date" id="report-start" class="form-control">
-                                <span>to</span>
-                                <input type="date" id="report-end" class="form-control">
-                                <button class="btn btn-primary" onclick="generateReport()">
-                                    <i class="fas fa-sync-alt"></i> Generate
-                                </button>
-                            </div>
+                            <button class="btn btn-primary" onclick="exportReportExcel()">
+                                <i class="fas fa-file-excel"></i> Export Report
+                            </button>
                         </div>
                     </div>
 
                     <div class="reports-container">
+                        <!-- Date Range Selector -->
+                        <div class="report-filters">
+                            <div class="filter-group">
+                                <label>Date Range:</label>
+                                <input type="date" id="report-start" class="form-control">
+                                <span>to</span>
+                                <input type="date" id="report-end" class="form-control">
+                                <button class="btn btn-primary" onclick="generateReport()">
+                                    <i class="fas fa-filter"></i> Apply
+                                </button>
+                                <button class="btn btn-outline" onclick="resetReportFilters()">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                            </div>
+                            <div class="filter-group">
+                                <label>Bank:</label>
+                                <select id="report-bank" class="form-control">
+                                    <option value="">All Banks</option>
+                                    <option value="People's Bank">People's Bank</option>
+                                    <option value="Bank of Ceylon">Bank of Ceylon</option>
+                                    <option value="Commercial Bank">Commercial Bank</option>
+                                    <option value="HNB">HNB</option>
+                                    <option value="Sampath Bank">Sampath Bank</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Status:</label>
+                                <select id="report-status" class="form-control">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="deposited">Deposited</option>
+                                    <option value="cleared">Cleared</option>
+                                    <option value="bounced">Bounced</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- Summary Cards -->
                         <div class="report-summary">
                             <div class="summary-card">
                                 <h4><i class="fas fa-file-invoice-dollar"></i> Total Amount</h4>
                                 <p class="summary-value" id="report-total">LKR 0</p>
-                                <span class="summary-change">vs previous period</span>
+                                <span class="summary-change">in selected period</span>
                             </div>
                             <div class="summary-card">
                                 <h4><i class="fas fa-list"></i> Cheque Count</h4>
@@ -475,30 +644,35 @@
                             </div>
                         </div>
 
-                        <!-- Charts -->
+                        <!-- Charts Row -->
                         <div class="charts-row">
-                            <div class="chart-card">
-                                <h4><i class="fas fa-chart-line"></i> Cheques Over Time</h4>
-                                <div class="chart-container">
-                                    <canvas id="timeChart"></canvas>
-                                </div>
-                            </div>
                             <div class="chart-card">
                                 <h4><i class="fas fa-chart-pie"></i> Bank Distribution</h4>
                                 <div class="chart-container">
                                     <canvas id="bankChart"></canvas>
                                 </div>
                             </div>
+                            <div class="chart-card">
+                                <h4><i class="fas fa-chart-line"></i> Monthly Trend</h4>
+                                <div class="chart-container">
+                                    <canvas id="monthlyChart"></canvas>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Detailed Report -->
+                        <!-- Detailed Report Table -->
                         <div class="report-details">
                             <div class="report-card">
                                 <div class="card-header">
                                     <h4><i class="fas fa-table"></i> Detailed Report</h4>
-                                    <button class="btn btn-outline" onclick="exportReport()">
-                                        <i class="fas fa-download"></i> Export PDF
-                                    </button>
+                                    <div class="report-actions">
+                                        <button class="btn btn-sm btn-outline" onclick="printReport()">
+                                            <i class="fas fa-print"></i> Print
+                                        </button>
+                                        <button class="btn btn-sm btn-outline" onclick="exportReportExcel()">
+                                            <i class="fas fa-file-excel"></i> Export
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table-container">
                                     <table id="report-table">
@@ -507,16 +681,25 @@
                                                 <th>Date</th>
                                                 <th>Cheque No</th>
                                                 <th>Bank</th>
+                                                <th>Branch</th>
                                                 <th>Payee</th>
                                                 <th>Amount</th>
                                                 <th>Status</th>
+                                                <th>Exported</th>
                                             </tr>
                                         </thead>
                                         <tbody id="report-body">
                                             <tr>
-                                                <td colspan="6" class="no-data">Select date range and generate report</td>
+                                                <td colspan="8" class="no-data">Select filters and generate report</td>
                                             </tr>
                                         </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="5" style="text-align: right; font-weight: bold;">Total:</td>
+                                                <td id="report-table-total" style="font-weight: bold;">LKR 0.00</td>
+                                                <td colspan="2"></td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             </div>
@@ -533,9 +716,10 @@
                     <div class="settings-container">
                         <div class="settings-nav">
                             <button class="settings-tab active" data-tab="general">General</button>
-                            <button class="settings-tab" data-tab="banks">Banks</button>
-                            <button class="settings-tab" data-tab="export">Export</button>
-                            <button class="settings-tab" data-tab="ocr">OCR Settings</button>
+                            <button class="settings-tab" data-tab="banks">Banks & Branches</button>
+                            <button class="settings-tab" data-tab="export">Export Settings</button>
+                            <button class="settings-tab" data-tab="deposit">Deposit Slip</button>
+                            <button class="settings-tab" data-tab="backup">Backup & Restore</button>
                         </div>
                         
                         <div class="settings-content">
@@ -545,97 +729,241 @@
                                 <form id="generalSettings">
                                     <div class="form-group">
                                         <label>Company Name</label>
-                                        <input type="text" class="form-control" value="ChequePro Manager">
+                                        <input type="text" class="form-control" value="ChequePro Manager" id="companyName">
                                     </div>
                                     <div class="form-group">
-                                        <label>Currency</label>
-                                        <select class="form-control">
-                                            <option>LKR - Sri Lankan Rupees</option>
-                                            <option>USD - US Dollar</option>
-                                            <option>EUR - Euro</option>
+                                        <label>Default Currency</label>
+                                        <select class="form-control" id="defaultCurrency">
+                                            <option value="LKR">LKR - Sri Lankan Rupees</option>
+                                            <option value="USD">USD - US Dollar</option>
+                                            <option value="EUR">EUR - Euro</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Date Format</label>
-                                        <select class="form-control">
-                                            <option>DD/MM/YYYY</option>
-                                            <option>MM/DD/YYYY</option>
-                                            <option>YYYY-MM-DD</option>
+                                        <select class="form-control" id="dateFormat">
+                                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Notifications</label>
                                         <div class="checkbox-group">
                                             <label class="checkbox">
-                                                <input type="checkbox" checked> Email notifications
+                                                <input type="checkbox" checked id="notifyNewCheque"> New cheque alerts
                                             </label>
                                             <label class="checkbox">
-                                                <input type="checkbox" checked> Dashboard alerts
+                                                <input type="checkbox" checked id="notifyExport"> Export reminders
                                             </label>
                                             <label class="checkbox">
-                                                <input type="checkbox"> SMS alerts
+                                                <input type="checkbox" id="notifyDeposit"> Deposit due alerts
                                             </label>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    <button type="button" class="btn btn-primary" onclick="saveGeneralSettings()">
+                                        <i class="fas fa-save"></i> Save Changes
+                                    </button>
                                 </form>
                             </div>
                             
-                            <!-- OCR Settings -->
-                            <div class="settings-tab-content" id="ocr-tab">
-                                <h3><i class="fas fa-eye"></i> OCR Configuration</h3>
-                                <div class="form-group">
-                                    <label>OCR Engine</label>
-                                    <select class="form-control" id="ocr-engine">
-                                        <option value="tesseract">Tesseract.js (Free)</option>
-                                        <option value="api">API Service</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Language</label>
-                                    <select class="form-control">
-                                        <option>English</option>
-                                        <option>Sinhala</option>
-                                        <option>Tamil</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Auto-extract fields</label>
-                                    <div class="checkbox-group">
-                                        <label class="checkbox">
-                                            <input type="checkbox" checked> Bank name
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" checked> Account number
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" checked> Cheque number
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox"> Amount
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox"> Payee name
-                                        </label>
+                            <!-- Banks & Branches -->
+                            <div class="settings-tab-content" id="banks-tab">
+                                <h3><i class="fas fa-landmark"></i> Manage Banks & Branches</h3>
+                                <div class="banks-management">
+                                    <div class="add-bank-section">
+                                        <h4>Add New Bank</h4>
+                                        <div class="form-inline">
+                                            <input type="text" id="newBankName" class="form-control" placeholder="Bank Name">
+                                            <button class="btn btn-primary" onclick="addNewBank()">
+                                                <i class="fas fa-plus"></i> Add Bank
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="banks-list-section">
+                                        <h4>Existing Banks</h4>
+                                        <div class="banks-list" id="banks-list">
+                                            <!-- Banks will be loaded here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="branches-section">
+                                        <h4>Manage Branches</h4>
+                                        <div class="form-group">
+                                            <label>Select Bank</label>
+                                            <select id="branchBankSelect" class="form-control" onchange="loadBranches()">
+                                                <option value="">Select a bank</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-inline">
+                                            <input type="text" id="newBranchName" class="form-control" placeholder="Branch Name">
+                                            <input type="text" id="newBranchCode" class="form-control" placeholder="Branch Code">
+                                            <button class="btn btn-primary" onclick="addNewBranch()">
+                                                <i class="fas fa-plus"></i> Add Branch
+                                            </button>
+                                        </div>
+                                        <div class="branches-list" id="branches-list">
+                                            <!-- Branches will be loaded here -->
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Image Processing</label>
-                                    <div class="checkbox-group">
-                                        <label class="checkbox">
-                                            <input type="checkbox" checked> Auto-rotate
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" checked> Enhance quality
-                                        </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox"> Remove background
-                                        </label>
+                            </div>
+                            
+                            <!-- Export Settings -->
+                            <div class="settings-tab-content" id="export-tab">
+                                <h3><i class="fas fa-file-excel"></i> Excel Export Settings</h3>
+                                <form id="exportSettings">
+                                    <div class="form-group">
+                                        <label>Default Export Type</label>
+                                        <select class="form-control" id="defaultExportType">
+                                            <option value="full">Full Export (All Data)</option>
+                                            <option value="update">Update Export (New Only)</option>
+                                            <option value="range">Date Range Export</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Excel File Name Pattern</label>
+                                        <input type="text" class="form-control" value="ChequePro_{type}_{date}" id="excelNamePattern">
+                                        <small class="form-text text-muted">Variables: {type}, {date}, {time}, {count}</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Include in Export</label>
+                                        <div class="checkbox-group">
+                                            <label class="checkbox">
+                                                <input type="checkbox" checked id="exportAllFields"> All Fields
+                                            </label>
+                                            <label class="checkbox">
+                                                <input type="checkbox" checked id="exportAmountWords"> Amount in Words
+                                            </label>
+                                            <label class="checkbox">
+                                                <input type="checkbox" id="exportNotes"> Notes
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Auto-Export Schedule</label>
+                                        <select class="form-control" id="autoExportSchedule">
+                                            <option value="never">Never</option>
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly (Every Friday)</option>
+                                            <option value="monthly">Monthly (End of Month)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Auto-Mark as Exported</label>
+                                        <div class="checkbox-group">
+                                            <label class="checkbox">
+                                                <input type="checkbox" checked id="autoMarkExported"> Automatically mark cheques as exported after download
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-primary" onclick="saveExportSettings()">
+                                        <i class="fas fa-save"></i> Save Export Settings
+                                    </button>
+                                    <button type="button" class="btn btn-outline" onclick="testExportFormat()">
+                                        <i class="fas fa-vial"></i> Test Export Format
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Deposit Slip Settings -->
+                            <div class="settings-tab-content" id="deposit-tab">
+                                <h3><i class="fas fa-file-invoice"></i> Deposit Slip Settings</h3>
+                                <form id="depositSettings">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-landmark"></i> Bank Name</label>
+                                        <input type="text" class="form-control" id="slipBankName" value="YOUR BANK NAME">
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fas fa-user"></i> Default Account Holder</label>
+                                        <input type="text" class="form-control" id="defaultAccountHolder" value="John Doe">
+                                    </div>
+                                    <div class="image">
+                                        <img src="image copy.png" alt="Deposit Slip Preview">
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fas fa-hashtag"></i> Default Account Number Format</label>
+                                        <input type="text" class="form-control" id="defaultAccountNumber" 
+                                               value="6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1.1.1.1" 
+                                               placeholder="Format with dots and spaces as needed">
+                                        <small>Use dots (.), spaces, and slashes (/) as needed</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fas fa-file-alt"></i> Additional Notes on Slip</label>
+                                        <textarea class="form-control" id="slipNotes" rows="3" placeholder="Additional information to print on slip..."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fas fa-print"></i> Print Settings</label>
+                                        <div class="checkbox-group">
+                                            <label class="checkbox">
+                                                <input type="checkbox" checked id="printDateTime"> Print date & time
+                                            </label>
+                                            <label class="checkbox">
+                                                <input type="checkbox" checked id="printPageNumbers"> Print page numbers
+                                            </label>
+                                            <label class="checkbox">
+                                                <input type="checkbox" id="printWatermark"> Add watermark
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-primary" onclick="saveDepositSlipSettings()">
+                                        <i class="fas fa-save"></i> Save Deposit Slip Settings
+                                    </button>
+                                    <button type="button" class="btn btn-outline" onclick="testSlipPrint()">
+                                        <i class="fas fa-print"></i> Test Print
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Backup & Restore -->
+                            <div class="settings-tab-content" id="backup-tab">
+                                <h3><i class="fas fa-database"></i> Backup & Restore</h3>
+                                <div class="backup-actions">
+                                    <div class="action-card">
+                                        <h4><i class="fas fa-download"></i> Backup Data</h4>
+                                        <p>Create a backup of all your cheque data</p>
+                                        <button class="btn btn-primary" onclick="backupData()">
+                                            <i class="fas fa-file-export"></i> Create Backup
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="action-card">
+                                        <h4><i class="fas fa-upload"></i> Restore Data</h4>
+                                        <p>Restore from a previous backup</p>
+                                        <input type="file" id="restoreFile" accept=".json" style="display: none;">
+                                        <button class="btn btn-warning" onclick="document.getElementById('restoreFile').click()">
+                                            <i class="fas fa-file-import"></i> Choose Backup File
+                                        </button>
+                                        <small class="form-text text-muted">Select a .json backup file</small>
+                                    </div>
+                                    
+                                    <div class="action-card">
+                                        <h4><i class="fas fa-trash"></i> Reset Data</h4>
+                                        <p>Clear all data (irreversible)</p>
+                                        <button class="btn btn-danger" onclick="resetAllData()">
+                                            <i class="fas fa-exclamation-triangle"></i> Reset All Data
+                                        </button>
                                     </div>
                                 </div>
-                                <button class="btn btn-primary" onclick="testOCR()">
-                                    <i class="fas fa-vial"></i> Test OCR
-                                </button>
+                                
+                                <div class="backup-info">
+                                    <h4><i class="fas fa-info-circle"></i> Backup Information</h4>
+                                    <div class="info-grid">
+                                        <div class="info-item">
+                                            <span>Total Cheques:</span>
+                                            <strong id="backup-cheque-count">0</strong>
+                                        </div>
+                                        <div class="info-item">
+                                            <span>Last Backup:</span>
+                                            <strong id="last-backup-date">Never</strong>
+                                        </div>
+                                        <div class="info-item">
+                                            <span>Data Size:</span>
+                                            <strong id="data-size">0 KB</strong>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -643,39 +971,143 @@
             </div>
         </main>
 
-        <!-- Modal for Cheque View -->
-        <div class="modal" id="chequeViewModal">
+        <!-- Export Modal -->
+        <div class="modal" id="exportModal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3><i class="fas fa-receipt"></i> Cheque Details</h3>
-                    <button class="btn-icon" onclick="closeModal()">
+                    <h3><i class="fas fa-file-excel"></i> Export Options</h3>
+                    <button class="btn-icon" onclick="closeExportModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="cheque-view">
-                        <div class="cheque-image-section">
-                            <h4>Cheque Image</h4>
-                            <div class="image-container" id="modal-cheque-image">
-                                <img id="view-cheque-img" alt="Cheque Image">
+                    <div class="export-options">
+                        <div class="export-option" onclick="exportFullExcel()">
+                            <div class="export-icon">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="export-info">
+                                <h4>Full Export</h4>
+                                <p>Export all cheques with complete data</p>
+                                <small>Includes: All fields, All time periods</small>
                             </div>
                         </div>
-                        <div class="cheque-details-section">
-                            <h4>Extracted Information</h4>
-                            <div class="details-grid" id="cheque-details-grid">
-                                <!-- Details will be populated here -->
+                        
+                        <div class="export-option" onclick="exportUpdates()">
+                            <div class="export-icon">
+                                <i class="fas fa-sync"></i>
                             </div>
+                            <div class="export-info">
+                                <h4>Update Export</h4>
+                                <p>Export only new/unexported cheques</p>
+                                <small id="update-count">0 new cheques available</small>
+                            </div>
+                        </div>
+                        
+                        <div class="export-option" onclick="showDateRangeExport()">
+                            <div class="export-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="export-info">
+                                <h4>Date Range Export</h4>
+                                <p>Export cheques from specific dates</p>
+                                <small>Custom date range selection</small>
+                            </div>
+                        </div>
+                        
+                        <div class="export-option" onclick="exportSummaryReport()">
+                            <div class="export-icon">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <div class="export-info">
+                                <h4>Summary Report</h4>
+                                <p>Export summary statistics and charts</p>
+                                <small>Bank-wise totals and trends</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="export-advanced" id="dateRangeExport" style="display: none;">
+                        <h4>Date Range Selection</h4>
+                        <div class="form-group">
+                            <label>From Date</label>
+                            <input type="date" id="export-start-date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>To Date</label>
+                            <input type="date" id="export-end-date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <button class="btn btn-primary" onclick="exportDateRange()">
+                            <i class="fas fa-download"></i> Export Selected Range
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
+                    <button class="btn btn-outline" onclick="openExportSettings()">
+                        <i class="fas fa-cog"></i> Export Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Manual Entry Modal -->
+        <div class="modal" id="manualEntryModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-keyboard"></i> Manual Cheque Entry</h3>
+                    <button class="btn-icon" onclick="closeManualEntryModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Cheque Number *</label>
+                            <input type="text" id="manual-cheque-no" class="form-control" placeholder="e.g., 123456">
+                        </div>
+                        <div class="form-group">
+                            <label>Bank Code</label>
+                            <input type="text" id="manual-bank-code" class="form-control" placeholder="Bank code">
+                        </div>
+                        <div class="form-group">
+                            <label>Payee Name *</label>
+                            <input type="text" id="manual-payee" class="form-control" placeholder="Payee name">
+                        </div>
+                        <div class="form-group">
+                            <label>Amount (LKR) *</label>
+                            <input type="number" id="manual-amount" class="form-control" step="0.01" placeholder="0.00">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-                    <button class="btn btn-primary" onclick="editCheque()">Edit</button>
+                    <button class="btn btn-secondary" onclick="closeManualEntryModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="addManualChequeToList()">
+                        <i class="fas fa-plus"></i> Add to Slip
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current date
+            const now = new Date();
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            // Initialize the app
+            if (typeof app !== 'undefined') {
+                app.init();
+            }
+        });
+    </script>
 </body>
 </html>
