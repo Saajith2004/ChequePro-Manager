@@ -3024,3 +3024,150 @@ document.addEventListener('DOMContentLoaded', function() {
     if (chequeDate) chequeDate.value = today;
     if (depositDate) depositDate.value = today;
 });
+// ==================== DEPOSIT SLIP DYNAMIC POPULATION ====================
+
+// Populate account number boxes
+function populateAccountNumber(accountNumber) {
+    const display = document.getElementById('account-number-display');
+    const boxes = document.getElementById('account-number-boxes');
+    
+    display.textContent = accountNumber;
+    boxes.innerHTML = ''; // Clear existing boxes
+    
+    for (let char of accountNumber) {
+        const box = document.createElement('div');
+        box.classList.add('account-box');
+        if (char === '.') box.classList.add('dot');
+        else if (char === ' ') box.classList.add('space');
+        else if (char === '/') box.classList.add('slash');
+        else box.classList.add('digit');
+        box.textContent = char;
+        boxes.appendChild(box);
+    }
+}
+
+// Populate account holder name
+function populateHolderName(name) {
+    document.getElementById('holder-name').textContent = name;
+}
+
+// Populate amount
+function populateAmount(amount) {
+    document.getElementById('amount-numbers').textContent = amount.toFixed(2);
+    document.getElementById('amount-words').textContent = numberToWords(amount);
+}
+
+// Helper: convert numbers to words (simplified)
+function numberToWords(amount) {
+    return amount + ' only';
+}
+
+// Populate cheque table
+function populateChequeTable(cheques) {
+    const tbody = document.getElementById('cheque-table-body');
+    tbody.innerHTML = '';
+    
+    cheques.forEach(cheque => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cheque.number}</td>
+            <td>${cheque.bank}</td>
+            <td>${cheque.branch}</td>
+            <td>${cheque.amount.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Update total
+    const total = cheques.reduce((sum, c) => sum + c.amount, 0);
+    document.getElementById('total-amount').textContent = total.toFixed(2);
+}
+
+// Update print time
+function updatePrintTime() {
+    const now = new Date();
+    document.getElementById('print-time').textContent = now.toLocaleTimeString();
+}
+
+// Initialize the deposit slip with data
+function initializeDepositSlip(data) {
+    populateAccountNumber(data.accountNumber);
+    populateHolderName(data.holderName);
+    populateAmount(data.amount);
+    populateChequeTable(data.cheques);
+    updatePrintTime();
+}
+
+// ==================== DEPOSIT SLIP DYNAMIC POPULATION ====================
+
+// Populate account number boxes
+function populateAccountNumber(accountNumber) {
+    const display = document.getElementById('account-number-display');
+    const boxes = document.getElementById('account-number-boxes');
+    
+    display.textContent = accountNumber;
+    boxes.innerHTML = ''; // Clear existing boxes
+    
+    for (let char of accountNumber) {
+        const box = document.createElement('div');
+        box.classList.add('account-box');
+        if (char === '.') box.classList.add('dot');
+        else if (char === ' ') box.classList.add('space');
+        else if (char === '/') box.classList.add('slash');
+        else box.classList.add('digit');
+        box.textContent = char;
+        boxes.appendChild(box);
+    }
+}
+
+// Populate account holder name
+function populateHolderName(name) {
+    document.getElementById('holder-name').textContent = name;
+}
+
+// Populate amount
+function populateAmount(amount) {
+    document.getElementById('amount-numbers').textContent = amount.toFixed(2);
+    document.getElementById('amount-words').textContent = numberToWords(amount);
+}
+
+// Helper: convert numbers to words (simplified)
+function numberToWords(amount) {
+    return amount + ' only';
+}
+
+// Populate cheque table
+function populateChequeTable(cheques) {
+    const tbody = document.getElementById('cheque-table-body');
+    tbody.innerHTML = '';
+    
+    cheques.forEach(cheque => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cheque.number}</td>
+            <td>${cheque.bank}</td>
+            <td>${cheque.branch}</td>
+            <td>${cheque.amount.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Update total
+    const total = cheques.reduce((sum, c) => sum + c.amount, 0);
+    document.getElementById('total-amount').textContent = total.toFixed(2);
+}
+
+// Update print time
+function updatePrintTime() {
+    const now = new Date();
+    document.getElementById('print-time').textContent = now.toLocaleTimeString();
+}
+
+// Initialize the deposit slip with data
+function initializeDepositSlip(data) {
+    populateAccountNumber(data.accountNumber);
+    populateHolderName(data.holderName);
+    populateAmount(data.amount);
+    populateChequeTable(data.cheques);
+    updatePrintTime();
+}

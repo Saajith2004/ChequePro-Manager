@@ -12,6 +12,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- Chart.js for Reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .deposit-slip-bg {
+            background-image: url("Account Number_page-0001 (1).jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center top;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -203,7 +211,7 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label><i class="fas fa-calendar"></i> Cheque Date *</label>
-                                    <input type="date" id="chequeDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                                    <input type="date" id="chequeDate" class="form-control" required value="">
                                 </div>
                                 <div class="form-group">
                                     <label><i class="fas fa-hashtag"></i> Cheque Number *</label>
@@ -427,7 +435,7 @@
                                 <form id="depositForm">
                                     <div class="form-group">
                                         <label><i class="fas fa-calendar"></i> Deposit Date *</label>
-                                        <input type="date" id="depositDate" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+                                        <input type="date" id="depositDate" class="form-control" required value="">
                                     </div>
                                     <div class="form-group">
                                         <label><i class="fas fa-user"></i> Account Holder Name *</label>
@@ -473,12 +481,12 @@
                                 <h3><i class="fas fa-print"></i> Deposit Slip Preview</h3>
                                 <div class="slip-container">
                                     <!-- Custom Deposit Slip Format -->
-                                    <div class="deposit-slip" id="depositSlip">
+                                    <div class="deposit-slip deposit-slip-bg" id="depositSlip">
                                         <!-- Header -->
                                         <div class="slip-header">
                                             <div class="bank-name">YOUR BANK NAME</div>
                                             <div class="slip-title">DEPOSIT SLIP</div>
-                                            <div class="slip-date">Date: <span id="slip-date"><?php echo date('d/m/Y'); ?></span></div>
+                                            <div class="slip-date">Date: <span id="slip-date"></span></div>
                                         </div>
                                         
                                         <!-- Account Number -->
@@ -553,7 +561,7 @@
                                         <!-- Footer -->
                                         <div class="slip-footer">
                                             <div class="footer-note">* Please ensure all details are correct before submission</div>
-                                            <div class="print-info">Printed: <span id="print-time"><?php echo date('H:i:s'); ?></span></div>
+                                            <div class="print-info">Printed: <span id="print-time"></span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1035,7 +1043,7 @@
                         </div>
                         <div class="form-group">
                             <label>To Date</label>
-                            <input type="date" id="export-end-date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+                                <input type="date" id="export-end-date" class="form-control" value="">
                         </div>
                         <button class="btn btn-primary" onclick="exportDateRange()">
                             <i class="fas fa-download"></i> Export Selected Range

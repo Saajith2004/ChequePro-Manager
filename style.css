@@ -143,6 +143,7 @@ body {
     opacity: 0.8;
 }
 
+
 /* Main Content */
 .main-content {
     flex: 1;
@@ -1648,4 +1649,33 @@ textarea.form-control {
         height: 25px;
         font-size: 12px;
     }
+}
+
+/* ==================== DEPOSIT SLIP FIXED SIZE + BACKGROUND ==================== */
+.deposit-slip-bg {
+    background-image: url("Account Number_page-0001 (1).jpg");
+    background-size: 200mm 103mm;
+    background-repeat: no-repeat;
+    background-position: center top;
+    width: 200mm;
+    height: 103mm;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Print rules for exact physical output */
+@media print {
+    @page { size: 200mm 103mm; margin: 0; }
+    body { margin: 0; }
+    .deposit-slip-bg {
+        background-image: url("Account Number_page-0001 (1).jpg");
+        background-size: 200mm 103mm !important;
+        width: 200mm !important;
+        height: 103mm !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    body * { visibility: hidden; }
+    .deposit-slip-bg, .deposit-slip-bg * { visibility: visible; }
+    .deposit-slip-bg { position: absolute; left: 0; top: 0; }
 }
