@@ -23,6 +23,56 @@ class ChequeProManager {
         
         this.init();
     }
+
+    /**
+     * Helper to pad numbers with non-breaking spaces on the left for deposit slip,
+     * always filling from the rightmost box first.
+     * @param {string|number} numberString
+     * @param {number} totalBoxes
+     * @returns {string}
+     */
+    formatBackfill(numberString, totalBoxes) {
+        numberString = (numberString || "").toString().replace(/\D/g, "");
+
+        // Ensure number is not longer than totalBoxes
+        numberString = numberString.slice(-totalBoxes);
+
+        // Fill from right → left using non-breaking spaces
+        const padCount = totalBoxes - numberString.length;
+        const padding = "\u00A0".repeat(padCount);
+
+        return padding + numberString;
+    }
+
+    /**
+     * Enforce max 9-digit amount (Rs) + 2 decimals (Cts)
+     */
+    limitAmountInput(input) {
+        if (!input) return;
+
+        let v = input.value.replace(/[^0-9.]/g, '');
+
+        // Allow only one dot
+        const parts = v.split('.');
+        if (parts.length > 2) {
+            v = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        // Re-split after cleanup
+        let [rs, cts] = v.split('.');
+
+        // Limit Rs to 9 digits
+        if (rs) rs = rs.slice(0, 9);
+
+        // Limit Cts to 2 digits
+        if (cts) cts = cts.slice(0, 2);
+
+        // Rebuild value
+        v = rs || '';
+        if (cts !== undefined) v += '.' + cts;
+
+        input.value = v;
+    }
     
     getDefaultBanks() {
         return {
@@ -151,6 +201,7 @@ class ChequeProManager {
         const amountInput = document.getElementById('amount');
         if (amountInput) {
             amountInput.addEventListener('input', () => {
+                this.limitAmountInput(amountInput);
                 this.convertAmountToWords();
             });
         }
@@ -229,6 +280,69 @@ class ChequeProManager {
             });
         }
         
+        // ==================== FILTER ENGINE EVENTS ====================
+        const filterBtn = document.getElementById('filter-btn');
+        const filterDropdown = document.getElementById('filter-dropdown');
+        const filterAmount = document.getElementById('filter-amount');
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const clearFiltersBtn = document.getElementById('clear-filters');
+
+        if (filterBtn && filterDropdown) {
+            filterBtn.addEventListener('click', () => {
+                filterDropdown.classList.toggle('hidden');
+            });
+        }
+
+        if (filterAmount) {
+            filterAmount.addEventListener('change', () => {
+                const customBox = document.getElementById('custom-amount-box');
+                if (filterAmount.value === "custom") {
+                    customBox.classList.remove('hidden');
+                } else {
+                    customBox.classList.add('hidden');
+                }
+            });
+        }
+
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', () => this.applyChequeFilters());
+        }
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', () => this.clearChequeFilters());
+        }
+
+        // ========== NEW FILTER SIDEBAR ENGINE ==========
+        // Sidebar elements
+        const filterToggle = document.getElementById("filter-toggle");
+        const filterPanel = document.querySelector(".filter-panel");
+        const filterOverlay = document.querySelector(".filter-overlay");
+        const filterClose = document.getElementById("filter-close");
+
+        // Open filter panel
+        if (filterToggle && filterPanel && filterOverlay) {
+            filterToggle.addEventListener("click", () => {
+                filterPanel.classList.add("active");
+                filterOverlay.classList.add("active");
+            });
+        }
+
+        // Close when clicking close button
+        if (filterClose && filterPanel && filterOverlay) {
+            filterClose.addEventListener("click", () => {
+                filterPanel.classList.remove("active");
+                filterOverlay.classList.remove("active");
+            });
+        }
+
+        // Close when clicking dark overlay
+        if (filterOverlay && filterPanel) {
+            filterOverlay.addEventListener("click", () => {
+                filterPanel.classList.remove("active");
+                filterOverlay.classList.remove("active");
+            });
+        }
+
         // Load account holder from settings
         this.loadAccountHolderSettings();
     }
@@ -291,9 +405,7 @@ class ChequeProManager {
             content.classList.remove('active');
         });
         
-        // Activate clicked tab element safely
-        const clickedTab = document.querySelector(`.settings-tab[data-tab="${tabId}"]`);
-        if (clickedTab) clickedTab.classList.add('active');
+        event.target.classList.add('active');
         const tabContent = document.getElementById(`${tabId}-tab`);
         if (tabContent) {
             tabContent.classList.add('active');
@@ -500,6 +612,129 @@ class ChequeProManager {
         return result;
     }
     
+    // ==================== ADVANCED FILTER ENGINE ====================
+
+    applyChequeFilters() {
+        const status = document.getElementById("filter-status")?.value || "";
+        const bank = document.getElementById("filter-bank")?.value || "";
+        const amountRange = document.getElementById("filter-amount")?.value || "";
+        const customMin = Number(document.getElementById("custom-min")?.value || 0);
+        const customMax = Number(document.getElementById("custom-max")?.value || Infinity);
+        const dateFilter = document.getElementById("filter-date")?.value || "";
+
+        let filtered = [...this.cheques];
+
+        // Status filter
+        if (status) {
+            filtered = filtered.filter(c => c.status === status);
+        }
+
+        // Bank filter
+        if (bank) {
+            filtered = filtered.filter(c => c.bankName === bank);
+        }
+
+        // Amount Range filter
+        if (amountRange && amountRange !== "custom") {
+            let [min, max] = amountRange.split("-");
+            min = Number(min);
+            max = max === "+" ? Infinity : Number(max);
+
+            filtered = filtered.filter(c => c.amount >= min && c.amount <= max);
+        }
+
+        // Custom amount range
+        if (amountRange === "custom") {
+            filtered = filtered.filter(c => c.amount >= customMin && c.amount <= customMax);
+        }
+
+        // Date filter
+        if (dateFilter) {
+            const now = new Date();
+            const today = new Date(now.toISOString().split("T")[0]);
+
+            filtered = filtered.filter(c => {
+                const d = new Date(c.chequeDate);
+                if (isNaN(d)) return false;
+
+                let start, end;
+
+                if (dateFilter === "today") {
+                    return d.toDateString() === today.toDateString();
+                }
+
+                if (dateFilter === "week") {
+                    start = new Date(today);
+                    start.setDate(today.getDate() - today.getDay());
+                    end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    return d >= start && d <= end;
+                }
+
+                if (dateFilter === "month") {
+                    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+                }
+
+                if (dateFilter === "custom-date") {
+                    const startInput = document.getElementById("custom-date-start").value;
+                    const endInput = document.getElementById("custom-date-end").value;
+
+                    if (!startInput || !endInput) return true;
+
+                    start = new Date(startInput);
+                    end = new Date(endInput);
+                    return d >= start && d <= end;
+                }
+
+                return true;
+            });
+        }
+
+        this.renderFilteredCheques(filtered);
+    }
+
+    renderFilteredCheques(list) {
+        const tbody = document.getElementById("cheques-body");
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="no-data">No cheques found for applied filters</td></tr>`;
+            return;
+        }
+
+        list.slice(0, this.itemsPerPage).forEach(cheque => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td><input type="checkbox" onchange="app.toggleChequeSelection('${cheque.id}', this.checked)"></td>
+                <td>${new Date(cheque.chequeDate).toLocaleDateString()}</td>
+                <td>${cheque.chequeNumber}</td>
+                <td>${cheque.bankName}</td>
+                <td>${cheque.branch}</td>
+                <td>${cheque.payee}</td>
+                <td>LKR ${this.formatCurrency(cheque.amount)}</td>
+                <td><span class="status-badge status-${cheque.status}" onclick="app.toggleChequeStatus('${cheque.id}')">${cheque.status}</span></td>
+                <td><span class="export-badge ${cheque.exported ? 'exported' : 'not-exported'}">${cheque.exported ? 'Exported' : 'Not Exported'}</span></td>
+                <td>
+                    <button class="btn-icon" onclick="app.editCheque('${cheque.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" onclick="app.deleteCheque('${cheque.id}')"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    clearChequeFilters() {
+        document.getElementById("filter-status").value = "";
+        document.getElementById("filter-bank").value = "";
+        document.getElementById("filter-amount").value = "";
+        document.getElementById("filter-date").value = "";
+        const customBoxes = document.querySelectorAll("#custom-amount-box, #custom-date-box");
+        customBoxes.forEach(box => box.classList.add("hidden"));
+        this.loadCheques();
+    }
+
     // ==================== CHEQUE MANAGEMENT ====================
     
     saveCheque() {
@@ -542,7 +777,7 @@ class ChequeProManager {
             payee: payee,
             accountHolder: accountHolder || payee,
             accountNumber: accountNumber,
-            amount: amount,
+            amount: amount ,
             amountWords: amountWords || this.numberToWords(amount) + ' Only',
             status: status,
             notes: notes,
@@ -747,7 +982,13 @@ class ChequeProManager {
                 <td>${cheque.branch}</td>
                 <td>${cheque.payee}</td>
                 <td>LKR ${this.formatCurrency(cheque.amount)}</td>
-                <td><span class="status-badge status-${cheque.status}">${cheque.status}</span></td>
+                <td>
+                    <span class="status-badge status-${cheque.status}"
+                          style="cursor:pointer;"
+                          onclick="app.toggleChequeStatus('${cheque.id}')">
+                        ${cheque.status}
+                    </span>
+                </td>
                 <td><span class="export-badge ${cheque.exported ? 'exported' : 'not-exported'}">${cheque.exported ? 'Exported' : 'Not Exported'}</span></td>
                 <td>
                     <div class="action-buttons">
@@ -891,6 +1132,21 @@ class ChequeProManager {
             this.loadDashboardData();
             alert('Cheque deleted');
         }
+    }
+
+    /**
+     * Toggle the status of a cheque between "pending", "deposited", and "RTN".
+     */
+    toggleChequeStatus(id) {
+        const cheque = this.cheques.find(c => c.id === id);
+        if (!cheque) return;
+
+        const order = ["pending","deposited","RTN"];
+        const next = order[(order.indexOf(cheque.status) + 1) % order.length];
+        cheque.status = next;
+
+        this.saveToStorage();
+        this.loadCheques(this.currentPage);
     }
     
     editCheque(id) {
@@ -1251,8 +1507,8 @@ class ChequeProManager {
             if (chequeNoEl) chequeNoEl.textContent = row.chequeNo || '';
             if (branchCodeEl) branchCodeEl.textContent = row.branchCode || '';
             if (branchNameEl) branchNameEl.textContent = row.branchName || '';
-            if (amountRsEl) amountRsEl.textContent = rs;
-            if (amountCtsEl) amountCtsEl.textContent = cts;
+            if (amountRsEl) amountRsEl.textContent = this.formatBackfill(rs, 9);
+            if (amountCtsEl) amountCtsEl.textContent = this.formatBackfill(cts, 2);
         }
 
         // --- Totals ---
@@ -1262,8 +1518,8 @@ class ChequeProManager {
         // Update slip preview totals
         const slipTotalRs = document.getElementById('slip-total-rs');
         const slipTotalCts = document.getElementById('slip-total-cts');
-        if (slipTotalRs) slipTotalRs.textContent = totalRs;
-        if (slipTotalCts) slipTotalCts.textContent = totalCts;
+        if (slipTotalRs) slipTotalRs.textContent = this.formatBackfill(totalRs, 9);
+        if (slipTotalCts) slipTotalCts.textContent = this.formatBackfill(totalCts, 2);
 
         // Update totals in the input section
         const totalRsInput = document.getElementById('ds-total-rs');
@@ -1317,7 +1573,7 @@ class ChequeProManager {
                 <div class="form-group">
                     ${isFirst ? '<label>Amount *</label>' : ''}
                     <input type="number" class="form-control cheque-amount" placeholder="0.00" step="0.01"
-                           oninput="app.updateSlipFromForm()">
+                           oninput="app.limitAmountInput(this); app.updateSlipFromForm()">
                 </div>
                 <button type="button" class="btn btn-danger delete-row-btn" onclick="app.deleteChequeRow(this)">
                     <i class="fas fa-trash"></i>
@@ -1397,6 +1653,118 @@ class ChequeProManager {
     }
 
     
+
+    // ==================== EXCEL IMPORT (OPTION A FORMAT) ====================
+
+    /**
+     * Import cheques from an uploaded Excel (.xlsx) file.
+     * Expected Column Headers (Option A):
+     * Date | Cheque Number | Bank Name | Bank Branch | Bank Code | Payee | Amount
+     */
+    importChequesFromExcel(file) {
+        if (!file) {
+            alert("Please select an Excel file.");
+            return;
+        }
+
+        if (typeof XLSX === "undefined" || !XLSX.read || !XLSX.utils) {
+            alert("Excel library is not loaded. Please check that XLSX is included.");
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+                let importedCount = 0;
+
+                rows.forEach(row => {
+                    const chequeNumber = (row["Cheque Number"] || "").toString().trim();
+                    const amount = parseFloat(row["Amount"]) || 0;
+
+                    // Minimal validation
+                    if (!chequeNumber || amount <= 0) return;
+
+                    // Parse date
+                    const rawDate = row["Date"] || "";
+                    let chequeDate = "";
+                    try {
+                        chequeDate = rawDate ? new Date(rawDate).toISOString().split("T")[0] : "";
+                    } catch {
+                        chequeDate = "";
+                    }
+
+                    const bankName = (row["Bank Name"] || "").toString().trim();
+                    const branch = (row["Bank Branch"] || "").toString().trim();
+                    const bankCode = (row["Bank Code"] || "").toString().trim();
+                    const payee = (row["Payee"] || "").toString().trim();
+
+                    const cheque = {
+                        id: Date.now().toString() + Math.random(),
+                        chequeDate,
+                        chequeNumber,
+                        bankName,
+                        branch,
+                        bankCode,
+                        payee,
+                        accountHolder: payee,
+                        accountNumber: "",
+                        amount,
+                        amountWords: this.numberToWords(amount) + " Only",
+                        status: "pending",
+                        notes: "",
+                        exported: false,
+                        exportDate: null,
+                        exportType: null,
+                        addedDate: new Date().toISOString(),
+                        depositSlipId: null,
+                        depositedDate: null
+                    };
+
+                    this.cheques.unshift(cheque);
+                    importedCount++;
+                });
+
+                this.saveToStorage();
+                this.loadCheques();
+
+                alert(`Imported ${importedCount} cheques successfully!`);
+
+            } catch (err) {
+                console.error("Excel Import Error:", err);
+                alert("Failed to read Excel file. Please check the file format (Option A headers).");
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
+
+    /**
+     * Wrapper for cheque list import input (onchange in Cheque List header).
+     */
+    importChequesFromExcelList(event) {
+        const file = event && event.target && event.target.files ? event.target.files[0] : null;
+        if (!file) {
+            alert("No file selected.");
+            return;
+        }
+
+        this.importChequesFromExcel(file);
+
+        // Allow selecting same file again
+        if (event && event.target) {
+            event.target.value = "";
+        }
+    }
+
     // ==================== MANUAL ENTRY FUNCTIONALITY ====================
     
     toggleDepositMode() {
@@ -1460,7 +1828,7 @@ class ChequeProManager {
             <div class="manual-entry-field small">
                 <input type="number" class="form-control manual-amount" step="0.01"
                        placeholder="Amount" data-index="${index}"
-                       oninput="app.updateManualCheque(${index}, 'amount', this.value)">
+                       oninput="app.limitAmountInput(this); app.updateManualCheque(${index}, 'amount', this.value)">
             </div>
             <button class="btn-icon" onclick="app.removeManualCheque(${index})">
                 <i class="fas fa-times"></i>
@@ -1529,7 +1897,7 @@ class ChequeProManager {
                     <div class="manual-entry-field small">
                         <input type="number" class="form-control manual-amount" step="0.01"
                                value="${cheque.amount || ''}" placeholder="Amount" data-index="${i}"
-                               oninput="app.updateManualCheque(${i}, 'amount', this.value)">
+                               oninput="app.limitAmountInput(this); app.updateManualCheque(${i}, 'amount', this.value)">
                     </div>
                     <button class="btn-icon" onclick="app.removeManualCheque(${i})">
                         <i class="fas fa-times"></i>
@@ -1549,93 +1917,89 @@ class ChequeProManager {
     // ==================== PRINT FUNCTIONALITY ====================
     
     printDepositSlip() {
-        const selectedCheques = this.depositMode === 'manual' 
-            ? this.manualCheques 
-            : Array.from(this.selectedForDeposit).map(id => this.cheques.find(c => c.id === id)).filter(Boolean);
-        
-        if (selectedCheques.length === 0) {
-            alert('Please add cheques to the deposit slip first');
+
+        const slip = document.querySelector(".deposit-slip-wrapper");
+        if (!slip) {
+            alert("Slip preview element not found.");
             return;
         }
-        
-        const totalAmount = selectedCheques.reduce((sum, c) => sum + c.amount, 0);
-        
-        if (confirm(`Print deposit slip with ${selectedCheques.length} cheque(s) totaling LKR ${this.formatCurrency(totalAmount)}?`)) {
-            // Mark cheques as deposited if in auto mode
-            if (this.depositMode === 'auto') {
-                const markAsDeposited = confirm('Mark selected cheques as deposited?');
-                if (markAsDeposited) {
-                    selectedCheques.forEach(cheque => {
-                        if (cheque.id) { // Only if it's from saved cheques
-                            const savedCheque = this.cheques.find(c => c.id === cheque.id);
-                            if (savedCheque) {
-                                savedCheque.status = 'deposited';
-                                savedCheque.depositedDate = new Date().toISOString();
-                            }
+
+        const slipHTML = slip.outerHTML;
+
+        const printWindow = window.open("", "_blank");
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Deposit Slip</title>
+                <style>
+
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+
+                    .deposit-slip-wrapper {
+                        width: 200mm;
+                        height: 103mm;
+                        position: relative;
+                        transform: scale(1);
+                        transform-origin: top left;
+                    }
+
+                    img.slip-bg {
+                        width: 200mm;
+                        height: 103mm;
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        z-index: 1;
+                    }
+
+                    .text-layer {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 200mm;
+                        height: 103mm;
+                        z-index: 5;
+                        font-family: 'Courier New', monospace;
+                        font-size: 13px;
+                        letter-spacing: 2px;
+                    }
+
+                    @media print {
+                        .no-print {
+                            display: none;
                         }
-                    });
-                    this.saveToStorage();
-                    this.loadDashboardData();
-                }
-                
-                // Clear selection
-                this.selectedForDeposit.clear();
-                this.updateDepositSelection();
-            } else {
-                // Clear manual entries after printing
-                this.manualCheques = [];
-                this.initManualChequeEntries();
-            }
-            
-            // Print the slip
-            const printWindow = window.open('', '_blank');
-            const slipContent = document.getElementById('depositSlip').outerHTML;
-            
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Deposit Slip</title>
-                    <style>
-                        body { 
-                            font-family: 'Courier New', monospace; 
-                            margin: 0; 
-                            padding: 20px;
-                        }
-                        .deposit-slip {
-                            border: 2px solid #000;
-                            padding: 25px;
-                            min-height: 500px;
-                            max-width: 800px;
-                            margin: 0 auto;
-                        }
-                        @media print {
-                            body { padding: 0; }
-                            .deposit-slip { border: none; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="deposit-slip">
-                        ${slipContent}
-                    </div>
-                    <div class="no-print" style="text-align: center; margin-top: 20px;">
-                        <button onclick="window.print()">Print</button>
-                        <button onclick="window.close()">Close</button>
-                    </div>
-                </body>
-                </html>
-            `);
-            
-            printWindow.document.close();
-            printWindow.focus();
-            
-            // Auto-print after a short delay
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
-        }
+                    }
+
+                </style>
+            </head>
+            <body>
+                ${slipHTML}
+
+                <div class="no-print" style="text-align:center; margin-top:20px;">
+                    <button onclick="window.print()">Print</button>
+                    <button onclick="window.close()">Close</button>
+                </div>
+
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+
+        setTimeout(() => printWindow.print(), 500);
     }
     
     saveDepositSlipPDF() {
@@ -2037,119 +2401,1173 @@ class ChequeProManager {
     createSummarySheet(wb) {
         // Bank-wise summary
         const bankSummary = {};
-
         this.cheques.forEach(cheque => {
             if (!bankSummary[cheque.bankName]) {
                 bankSummary[cheque.bankName] = {
                     count: 0,
-                    totalAmount: 0
+                    total: 0,
+                    deposited: 0,
+                    pending: 0
                 };
             }
-
-            bankSummary[cheque.bankName].count += 1;
-            bankSummary[cheque.bankName].totalAmount += cheque.amount;
+            
+            bankSummary[cheque.bankName].count++;
+            bankSummary[cheque.bankName].total += cheque.amount;
+            
+            if (cheque.status === 'deposited') {
+                bankSummary[cheque.bankName].deposited++;
+            } else {
+                bankSummary[cheque.bankName].pending++;
+            }
         });
-
-        // Convert summary object into a data array for Excel
-        const summaryData = Object.keys(bankSummary).map(bankName => ({
-            "Bank Name": bankName,
-            "Cheque Count": bankSummary[bankName].count,
-            "Total Amount (LKR)": bankSummary[bankName].totalAmount
+        
+        // Convert to array
+        const summaryData = Object.entries(bankSummary).map(([bank, data]) => ({
+            'Bank Name': bank,
+            'Cheque Count': data.count,
+            'Total Amount': data.total,
+            'Deposited Cheques': data.deposited,
+            'Pending Cheques': data.pending,
+            'Average Amount': data.total / data.count
         }));
-
-        // Create worksheet
-        const ws = XLSX.utils.json_to_sheet(summaryData);
-
-        // Append summary sheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, "Summary");
-    }
-
-    // ==================== EXCEL IMPORT ====================
-
-    /**
-     * Import cheques into the system from an Excel (.xlsx) file.
-     * Expected columns:
-     * Date, Cheque Number, Bank Name, Bank Branch, Bank Code, Payee, Amount
-     */
-    importChequesFromExcel(file) {
-        if (!file) {
-            alert("No file selected.");
-            return;
+        
+        // Add totals row
+        summaryData.push({
+            'Bank Name': 'TOTAL',
+            'Cheque Count': this.cheques.length,
+            'Total Amount': this.cheques.reduce((sum, c) => sum + c.amount, 0),
+            'Deposited Cheques': this.cheques.filter(c => c.status === 'deposited').length,
+            'Pending Cheques': this.cheques.filter(c => c.status !== 'deposited').length,
+            'Average Amount': this.cheques.length > 0 ? this.cheques.reduce((sum, c) => sum + c.amount, 0) / this.cheques.length : 0
+        });
+        
+        // Create summary worksheet
+        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+        
+        // Style summary sheet
+        const range = XLSX.utils.decode_range(wsSummary['!ref']);
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!wsSummary[address]) continue;
+            wsSummary[address].s = {
+                font: { bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "f8961e" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
         }
-
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                let importedCount = 0;
-
-                rows.forEach(row => {
-
-                    // Option A Columns:
-                    const chequeDateRaw = row["Date"] || "";
-                    const chequeNumber = (row["Cheque Number"] || "").toString().trim();
-                    const bankName = (row["Bank Name"] || "").toString().trim();
-                    const branch = (row["Bank Branch"] || "").toString().trim();
-                    const bankCode = (row["Bank Code"] || "").toString().trim();
-                    const payee = (row["Payee"] || "").toString().trim();
-                    const amount = parseFloat(row["Amount"]) || 0;
-
-                    // Validation
-                    if (!chequeNumber || amount <= 0 || !bankName) return;
-
-                    // Parse date
-                    let chequeDate = "";
-                    if (chequeDateRaw) {
-                        try {
-                            chequeDate = new Date(chequeDateRaw).toISOString().split("T")[0];
-                        } catch {
-                            chequeDate = "";
+        
+        // Style totals row
+        const totalsRow = range.e.r;
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: totalsRow, c: C });
+            if (!wsSummary[address]) continue;
+            wsSummary[address].s = {
+                font: { bold: true },
+                fill: { fgColor: { rgb: "f0f0f0" } }
+            };
+        }
+        
+        // Add to workbook
+        XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+    }
+    
+    updateExportNotification() {
+        const unexportedCount = this.cheques.filter(c => !c.exported).length;
+        const notification = document.getElementById('export-notification');
+        const newChequesCount = document.getElementById('new-cheques-count');
+        
+        if (notification && newChequesCount) {
+            if (unexportedCount > 0) {
+                notification.style.display = 'flex';
+                newChequesCount.textContent = unexportedCount;
+            } else {
+                notification.style.display = 'none';
+            }
+        }
+    }
+    
+    // ==================== REPORTS ====================
+    
+    generateReport() {
+        const startDate = document.getElementById('report-start')?.value;
+        const endDate = document.getElementById('report-end')?.value;
+        const bankFilter = document.getElementById('report-bank')?.value;
+        const statusFilter = document.getElementById('report-status')?.value;
+        
+        let filteredCheques = this.cheques;
+        
+        // Apply date filter
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            filteredCheques = filteredCheques.filter(cheque => {
+                const chequeDate = new Date(cheque.chequeDate);
+                return chequeDate >= start && chequeDate <= end;
+            });
+        }
+        
+        // Apply bank filter
+        if (bankFilter) {
+            filteredCheques = filteredCheques.filter(cheque => cheque.bankName === bankFilter);
+        }
+        
+        // Apply status filter
+        if (statusFilter) {
+            filteredCheques = filteredCheques.filter(cheque => cheque.status === statusFilter);
+        }
+        
+        // Update report summary
+        const totalAmount = filteredCheques.reduce((sum, c) => sum + c.amount, 0);
+        const uniqueBanks = [...new Set(filteredCheques.map(c => c.bankName))].length;
+        
+        let daysDiff = 1;
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        }
+        const dailyAverage = totalAmount / daysDiff;
+        
+        this.updateElement('report-total', 'LKR ' + this.formatCurrency(totalAmount));
+        this.updateElement('report-count', filteredCheques.length.toString());
+        this.updateElement('report-banks', uniqueBanks.toString());
+        this.updateElement('report-daily', 'LKR ' + this.formatCurrency(dailyAverage));
+        
+        // Update report table
+        const tbody = document.getElementById('report-body');
+        const tableTotal = document.getElementById('report-table-total');
+        
+        if (tbody) {
+            tbody.innerHTML = '';
+            
+            if (filteredCheques.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="no-data">No cheques found with selected filters</td>
+                    </tr>
+                `;
+            } else {
+                filteredCheques.forEach(cheque => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${new Date(cheque.chequeDate).toLocaleDateString()}</td>
+                        <td>${cheque.chequeNumber}</td>
+                        <td>${cheque.bankName}</td>
+                        <td>${cheque.branch}</td>
+                        <td>${cheque.payee}</td>
+                        <td>LKR ${this.formatCurrency(cheque.amount)}</td>
+                        <td><span class="status-badge status-${cheque.status}">${cheque.status}</span></td>
+                        <td><span class="export-badge ${cheque.exported ? 'exported' : 'not-exported'}">${cheque.exported ? '✓' : '✗'}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+        
+        if (tableTotal) {
+            tableTotal.textContent = 'LKR ' + this.formatCurrency(totalAmount);
+        }
+        
+        // Update charts
+        this.updateCharts(filteredCheques);
+    }
+    
+    updateCharts(cheques) {
+        // Bank distribution chart
+        const bankChart = document.getElementById('bankChart');
+        if (bankChart && cheques.length > 0) {
+            const bankData = {};
+            cheques.forEach(cheque => {
+                if (!bankData[cheque.bankName]) {
+                    bankData[cheque.bankName] = 0;
+                }
+                bankData[cheque.bankName] += cheque.amount;
+            });
+            
+            const ctx = bankChart.getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(bankData),
+                    datasets: [{
+                        data: Object.values(bankData),
+                        backgroundColor: [
+                            '#4361ee', '#4cc9f0', '#7209b7', '#f8961e',
+                            '#3a0ca3', '#f72585', '#4895ef', '#560bad'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // Monthly trend chart
+        const monthlyChart = document.getElementById('monthlyChart');
+        if (monthlyChart && cheques.length > 0) {
+            const monthlyData = {};
+            cheques.forEach(cheque => {
+                const date = new Date(cheque.chequeDate);
+                const monthYear = `${date.getMonth()+1}/${date.getFullYear()}`;
+                if (!monthlyData[monthYear]) {
+                    monthlyData[monthYear] = 0;
+                }
+                monthlyData[monthYear] += cheque.amount;
+            });
+            
+            const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+                const [aMonth, aYear] = a.split('/').map(Number);
+                const [bMonth, bYear] = b.split('/').map(Number);
+                return aYear === bYear ? aMonth - bMonth : aYear - bYear;
+            });
+            
+            const ctx = monthlyChart.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Amount (LKR)',
+                        data: sortedMonths.map(month => monthlyData[month]),
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'LKR ' + value.toLocaleString();
+                                }
+                            }
                         }
                     }
-
-                    // Create cheque object
-                    const cheque = {
-                        id: Date.now().toString() + Math.random(),
-                        chequeDate,
-                        chequeNumber,
-                        bankName,
-                        branch,
-                        bankCode,
-                        payee,
-                        accountHolder: payee,
-                        accountNumber: "",
-                        amount,
-                        amountWords: this.numberToWords(amount) + " Only",
-                        status: "pending",
-                        notes: "",
-                        exported: false,
-                        exportDate: null,
-                        exportType: null,
-                        addedDate: new Date().toISOString(),
-                        depositSlipId: null,
-                        depositedDate: null
-                    };
-
-                    this.cheques.unshift(cheque);
-                    importedCount++;
-                });
-
-                this.saveToStorage();
-                this.loadCheques();
-                alert(`Imported ${importedCount} cheques successfully`);
-
-            } catch (err) {
-                console.error(err);
-                alert("Error reading Excel file. Please check file format (Option A expected).");
+                }
+            });
+        }
+    }
+    
+    exportReportExcel() {
+        this.exportFullExcel(); // For now, use full export
+    }
+    
+    // ==================== SETTINGS ====================
+    
+    loadSettingsData() {
+        // Load general settings
+        document.getElementById('companyName').value = this.settings.companyName;
+        document.getElementById('defaultCurrency').value = this.settings.defaultCurrency;
+        document.getElementById('dateFormat').value = this.settings.dateFormat;
+        document.getElementById('notifyNewCheque').checked = this.settings.notifications.newCheque;
+        document.getElementById('notifyExport').checked = this.settings.notifications.exportReminder;
+        document.getElementById('notifyDeposit').checked = this.settings.notifications.depositDue;
+        
+        // Load export settings
+        document.getElementById('defaultExportType').value = this.settings.export.defaultType;
+        document.getElementById('excelNamePattern').value = this.settings.export.fileNamePattern;
+        document.getElementById('exportAllFields').checked = this.settings.export.includeAllFields;
+        document.getElementById('exportAmountWords').checked = this.settings.export.includeAmountWords;
+        document.getElementById('exportNotes').checked = this.settings.export.includeNotes;
+        document.getElementById('autoExportSchedule').value = this.settings.export.autoExportSchedule;
+        document.getElementById('autoMarkExported').checked = this.settings.export.autoMarkExported;
+    }
+    
+    loadBanksManagement() {
+        const banksList = document.getElementById('banks-list');
+        if (!banksList) return;
+        
+        banksList.innerHTML = '';
+        
+        this.banks.banks.forEach(bank => {
+            const bankItem = document.createElement('div');
+            bankItem.className = 'bank-item';
+            bankItem.innerHTML = `
+                <span>${bank}</span>
+                <button class="btn-icon" onclick="app.deleteBank('${bank}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            banksList.appendChild(bankItem);
+        });
+    }
+    
+    addNewBank() {
+        const newBankName = document.getElementById('newBankName').value.trim();
+        
+        if (!newBankName) {
+            alert('Please enter a bank name');
+            return;
+        }
+        
+        if (this.banks.banks.includes(newBankName)) {
+            alert('This bank already exists');
+            return;
+        }
+        
+        this.banks.banks.push(newBankName);
+        this.banks.branches[newBankName] = [];
+        
+        localStorage.setItem('banks', JSON.stringify(this.banks));
+        
+        // Clear input
+        document.getElementById('newBankName').value = '';
+        
+        // Reload dropdowns
+        this.loadBankDropdowns();
+        this.loadBanksManagement();
+        
+        alert(`Bank "${newBankName}" added successfully`);
+    }
+    
+    deleteBank(bankName) {
+        if (!confirm(`Delete bank "${bankName}"? This will also delete all its branches.`)) {
+            return;
+        }
+        
+        // Remove from banks array
+        this.banks.banks = this.banks.banks.filter(bank => bank !== bankName);
+        
+        // Remove branches
+        delete this.banks.branches[bankName];
+        
+        // Remove cheques from this bank
+        this.cheques = this.cheques.filter(cheque => cheque.bankName !== bankName);
+        
+        localStorage.setItem('banks', JSON.stringify(this.banks));
+        localStorage.setItem('cheques', JSON.stringify(this.cheques));
+        
+        // Reload everything
+        this.loadBankDropdowns();
+        this.loadBanksManagement();
+        this.loadCheques();
+        this.loadDashboardData();
+        
+        alert(`Bank "${bankName}" deleted`);
+    }
+    
+    loadBranches() {
+        const bankSelect = document.getElementById('branchBankSelect');
+        const branchesList = document.getElementById('branches-list');
+        
+        if (!bankSelect || !branchesList) return;
+        
+        const selectedBank = bankSelect.value;
+        branchesList.innerHTML = '';
+        
+        if (selectedBank && this.banks.branches[selectedBank]) {
+            this.banks.branches[selectedBank].forEach(branch => {
+                const branchItem = document.createElement('div');
+                branchItem.className = 'branch-item';
+                branchItem.innerHTML = `
+                    <span>${branch}</span>
+                    <button class="btn-icon" onclick="app.deleteBranch('${selectedBank}', '${branch}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                branchesList.appendChild(branchItem);
+            });
+        }
+    }
+    
+    addNewBranch() {
+        const bankSelect = document.getElementById('branchBankSelect');
+        const newBranchName = document.getElementById('newBranchName').value.trim();
+        const newBranchCode = document.getElementById('newBranchCode').value.trim();
+        
+        const selectedBank = bankSelect.value;
+        
+        if (!selectedBank) {
+            alert('Please select a bank first');
+            return;
+        }
+        
+        if (!newBranchName) {
+            alert('Please enter a branch name');
+            return;
+        }
+        
+        if (!this.banks.branches[selectedBank]) {
+            this.banks.branches[selectedBank] = [];
+        }
+        
+        if (this.banks.branches[selectedBank].includes(newBranchName)) {
+            alert('This branch already exists');
+            return;
+        }
+        
+        this.banks.branches[selectedBank].push(newBranchName);
+        
+        localStorage.setItem('banks', JSON.stringify(this.banks));
+        
+        // Clear inputs
+        document.getElementById('newBranchName').value = '';
+        document.getElementById('newBranchCode').value = '';
+        
+        // Reload branches list
+        this.loadBranches();
+        
+        alert(`Branch "${newBranchName}" added to ${selectedBank}`);
+    }
+    
+    deleteBranch(bankName, branchName) {
+        if (!confirm(`Delete branch "${branchName}" from ${bankName}?`)) {
+            return;
+        }
+        
+        this.banks.branches[bankName] = this.banks.branches[bankName].filter(branch => branch !== branchName);
+        
+        // Update cheques with this branch
+        this.cheques.forEach(cheque => {
+            if (cheque.bankName === bankName && cheque.branch === branchName) {
+                cheque.branch = '';
+            }
+        });
+        
+        localStorage.setItem('banks', JSON.stringify(this.banks));
+        localStorage.setItem('cheques', JSON.stringify(this.cheques));
+        
+        // Reload
+        this.loadBranches();
+        this.loadCheques();
+        
+        alert(`Branch "${branchName}" deleted`);
+    }
+    
+    saveGeneralSettings() {
+        const companyName = document.getElementById('companyName').value;
+        const defaultCurrency = document.getElementById('defaultCurrency').value;
+        const dateFormat = document.getElementById('dateFormat').value;
+        
+        this.settings.companyName = companyName;
+        this.settings.defaultCurrency = defaultCurrency;
+        this.settings.dateFormat = dateFormat;
+        this.settings.notifications.newCheque = document.getElementById('notifyNewCheque').checked;
+        this.settings.notifications.exportReminder = document.getElementById('notifyExport').checked;
+        this.settings.notifications.depositDue = document.getElementById('notifyDeposit').checked;
+        
+        localStorage.setItem('settings', JSON.stringify(this.settings));
+        
+        alert('General settings saved successfully');
+    }
+    
+    saveExportSettings() {
+        this.settings.export.defaultType = document.getElementById('defaultExportType').value;
+        this.settings.export.fileNamePattern = document.getElementById('excelNamePattern').value;
+        this.settings.export.includeAllFields = document.getElementById('exportAllFields').checked;
+        this.settings.export.includeAmountWords = document.getElementById('exportAmountWords').checked;
+        this.settings.export.includeNotes = document.getElementById('exportNotes').checked;
+        this.settings.export.autoExportSchedule = document.getElementById('autoExportSchedule').value;
+        this.settings.export.autoMarkExported = document.getElementById('autoMarkExported').checked;
+        
+        localStorage.setItem('settings', JSON.stringify(this.settings));
+        
+        alert('Export settings saved successfully');
+    }
+    
+    testExportFormat() {
+        // Create a test export with sample data
+        const testData = [{
+            'Date': '2025-12-03',
+            'Cheque Number': 'TEST001',
+            'Bank Name': 'Test Bank',
+            'Bank Branch': 'Test Branch',
+            'Payee': 'Test Payee',
+            'Amount (LKR)': 1000.00,
+            'Amount in Words': 'One Thousand Only',
+            'Status': 'Pending',
+            'Exported': 'No'
+        }];
+        
+        const ws = XLSX.utils.json_to_sheet(testData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Test Export");
+        XLSX.writeFile(wb, 'ChequePro_Test_Format.xlsx');
+        
+        alert('Test export file generated. Check the formatting.');
+    }
+    
+    loadBackupInfo() {
+        const chequeCount = this.cheques.length;
+        const lastBackup = this.settings.lastBackup;
+        const dataSize = JSON.stringify(this.cheques).length / 1024; // KB
+        
+        this.updateElement('backup-cheque-count', chequeCount.toString());
+        this.updateElement('last-backup-date', lastBackup ? new Date(lastBackup).toLocaleDateString() : 'Never');
+        this.updateElement('data-size', dataSize.toFixed(2) + ' KB');
+    }
+    
+    backupData() {
+        const backupData = {
+            cheques: this.cheques,
+            banks: this.banks,
+            settings: this.settings,
+            backupDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(backupData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `ChequePro_Backup_${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        
+        // Update backup history
+        this.backupHistory.push({
+            date: new Date().toISOString(),
+            file: exportFileDefaultName,
+            chequeCount: this.cheques.length
+        });
+        
+        localStorage.setItem('backupHistory', JSON.stringify(this.backupHistory));
+        
+        // Update settings
+        this.settings.lastBackup = new Date().toISOString();
+        localStorage.setItem('settings', JSON.stringify(this.settings));
+        
+        this.loadBackupInfo();
+        
+        alert(`Backup created successfully: ${exportFileDefaultName}`);
+    }
+    
+    restoreData(file) {
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const backupData = JSON.parse(e.target.result);
+                
+                if (!backupData.cheques || !backupData.banks || !backupData.settings) {
+                    throw new Error('Invalid backup file format');
+                }
+                
+                if (confirm('Restore from backup? This will replace all current data.')) {
+                    this.cheques = backupData.cheques;
+                    this.banks = backupData.banks;
+                    this.settings = backupData.settings;
+                    
+                    localStorage.setItem('cheques', JSON.stringify(this.cheques));
+                    localStorage.setItem('banks', JSON.stringify(this.banks));
+                    localStorage.setItem('settings', JSON.stringify(this.settings));
+                    
+                    // Reload everything
+                    this.loadDashboardData();
+                    this.loadCheques();
+                    this.loadBankDropdowns();
+                    this.loadBackupInfo();
+                    
+                    alert('Data restored successfully from backup');
+                }
+            } catch (error) {
+                console.error('Restore error:', error);
+                alert('Error restoring backup: ' + error.message);
             }
         };
-
-        reader.readAsArrayBuffer(file);
+        
+        reader.readAsText(file);
+    }
+    
+    resetAllData() {
+        if (confirm('WARNING: This will delete ALL data including cheques, banks, and settings. This action cannot be undone. Are you sure?')) {
+            if (confirm('LAST WARNING: All data will be permanently deleted. Continue?')) {
+                localStorage.clear();
+                
+                // Reset to defaults
+                this.cheques = [];
+                this.banks = this.getDefaultBanks();
+                this.settings = this.getDefaultSettings();
+                this.backupHistory = [];
+                
+                // Save defaults
+                this.saveToStorage();
+                
+                // Reload everything
+                this.loadDashboardData();
+                this.loadCheques();
+                this.loadBankDropdowns();
+                this.loadBackupInfo();
+                
+                alert('All data has been reset to defaults');
+            }
+        }
+    }
+    
+    // ==================== UTILITIES ====================
+    
+    updateNotificationBadge() {
+        const unexportedCount = this.cheques.filter(c => !c.exported).length;
+        const badge = document.querySelector('.badge');
+        
+        if (badge) {
+            if (unexportedCount > 0) {
+                badge.textContent = unexportedCount > 9 ? '9+' : unexportedCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+    
+    showLoading(message = 'Processing...') {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="spinner"></div>
+            <p>${message}</p>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    hideLoading() {
+        const overlay = document.querySelector('.loading-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    openFilterModal() {
+        alert('Filter modal would open here');
+    }
+    
+    openExportModal() {
+        const modal = document.getElementById('exportModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            
+            // Update counts
+            const unexportedCount = this.cheques.filter(c => !c.exported).length;
+            const updateCount = document.getElementById('update-count');
+            if (updateCount) {
+                updateCount.textContent = `${unexportedCount} new cheques available`;
+            }
+        }
+    }
+    
+    closeExportModal() {
+        const modal = document.getElementById('exportModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    showDateRangeExport() {
+        const dateRangeExport = document.getElementById('dateRangeExport');
+        if (dateRangeExport) {
+            dateRangeExport.style.display = 'block';
+        }
+    }
+    
+    openExportSettings() {
+        this.showPage('settings');
+        this.showSettingsTab('export');
+    }
+    
+    openManualEntryModal() {
+        const modal = document.getElementById('manualEntryModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    closeManualEntryModal() {
+        const modal = document.getElementById('manualEntryModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    addManualChequeToList() {
+        const chequeNumber = document.getElementById('manual-cheque-no').value;
+        const bankCode = document.getElementById('manual-bank-code').value;
+        const payee = document.getElementById('manual-payee').value;
+        const amount = parseFloat(document.getElementById('manual-amount').value) || 0;
+        
+        if (!chequeNumber || !payee || amount <= 0) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        if (this.manualCheques.length >= 6) {
+            alert('Maximum 6 cheques allowed per deposit slip');
+            return;
+        }
+        
+        this.manualCheques.push({
+            chequeNumber: chequeNumber,
+            bankCode: bankCode,
+            payee: payee,
+            amount: amount
+        });
+        
+        // Update manual entries display
+        this.initManualChequeEntries();
+        
+        // Switch to manual mode
+        this.depositMode = 'manual';
+        document.getElementById('depositMode').value = 'manual';
+        this.toggleDepositMode();
+        
+        this.closeManualEntryModal();
+        this.updateDepositSlipPreview();
+        
+        alert('Cheque added to deposit slip');
     }
 }
+
+// ==================== GLOBAL FUNCTIONS ====================
+
+// Initialize app
+let app;
+// Excel Import Global Wrappers (called from HTML)
+
+/**
+ * Import cheques from the "Import Cheques" panel in Cheque Entry.
+ * Uses the file input with id="chequeImportFile".
+ */
+function importChequesFromExcel() {
+    if (!window.app) {
+        alert("Application is not initialized yet.");
+        return;
+    }
+
+    const input = document.getElementById("chequeImportFile");
+    if (!input || !input.files || !input.files[0]) {
+        alert("Please select an Excel (.xlsx) file first.");
+        return;
+    }
+
+    const file = input.files[0];
+    app.importChequesFromExcel(file);
+
+    // Reset so the same file can be chosen again if needed
+    input.value = "";
+}
+
+/**
+ * Wrapper for the hidden file input in Cheque List header (onchange="importChequesFromExcelList(event)").
+ */
+function importChequesFromExcelList(event) {
+    if (!window.app) {
+        alert("Application is not initialized yet.");
+        return;
+    }
+
+    if (!event || !event.target || !event.target.files || !event.target.files[0]) {
+        alert("No file selected.");
+        return;
+    }
+
+    app.importChequesFromExcelList(event);
+}
+
+
+
+// Global functions for HTML onclick handlers
+function showPage(pageId) {
+    if (app) app.showPage(pageId);
+}
+
+function exportFullExcel() {
+    if (app) app.exportFullExcel();
+}
+
+function exportUpdates() {
+    if (app) app.exportUpdates();
+}
+
+function exportDateRange() {
+    if (app) app.exportDateRange();
+}
+
+function markAllExported() {
+    if (app) app.markAllExported();
+}
+
+function markSelectedExported() {
+    if (app) app.markSelectedExported();
+}
+
+function markSelectedDeposited() {
+    if (app) {
+        const selectedCheques = Array.from(app.selectedCheques)
+            .map(id => app.cheques.find(c => c.id === id))
+            .filter(Boolean);
+        
+        if (selectedCheques.length === 0) {
+            alert('Please select cheques to mark as deposited');
+            return;
+        }
+        
+        if (confirm(`Mark ${selectedCheques.length} selected cheques as deposited?`)) {
+            selectedCheques.forEach(cheque => {
+                cheque.status = 'deposited';
+                cheque.depositedDate = new Date().toISOString();
+            });
+            
+            app.saveToStorage();
+            app.loadCheques(app.currentPage);
+            app.loadDashboardData();
+            alert('Selected cheques marked as deposited');
+        }
+    }
+}
+
+function deleteSelected() {
+    if (app) app.deleteSelected();
+}
+
+function toggleSelectAll() {
+    if (app) app.toggleSelectAll();
+}
+
+function changePage(delta) {
+    if (app) app.changePage(delta);
+}
+
+function searchCheques() {
+    if (app) {
+        const input = document.getElementById('search-cheques');
+        if (input) app.searchCheques(input.value);
+    }
+}
+
+function clearForm() {
+    if (app) app.clearForm();
+}
+
+function saveAndAddAnother() {
+    if (app) app.saveAndAddAnother();
+}
+
+function processCheque() {
+    if (app) app.processCheque();
+}
+
+function retakePhoto() {
+    if (app) app.retakePhoto();
+}
+
+function selectForDeposit(id) {
+    if (app) app.selectForDeposit(id);
+}
+
+function removeFromDeposit(id) {
+    if (app) app.removeFromDeposit(id);
+}
+
+function clearSelected() {
+    if (app) app.clearSelected();
+}
+
+function enableManualEntry() {
+    if (app) {
+        app.depositMode = 'manual';
+        document.getElementById('depositMode').value = 'manual';
+        app.toggleDepositMode();
+    }
+}
+
+function addManualCheque() {
+    if (app) app.addManualCheque();
+}
+
+function printDepositSlip() {
+    if (app) app.printDepositSlip();
+}
+
+function saveDepositSlipPDF() {
+    if (app) app.saveDepositSlipPDF();
+}
+
+function refreshSlipPreview() {
+    if (app) app.refreshSlipPreview();
+}
+
+function resetSlip() {
+    if (app) app.resetSlip();
+}
+
+function toggleDepositMode() {
+    if (app) app.toggleDepositMode();
+}
+
+function generateReport() {
+    if (app) app.generateReport();
+}
+
+function exportReportExcel() {
+    if (app) app.exportReportExcel();
+}
+
+function printReport() {
+    window.print();
+}
+
+function resetReportFilters() {
+    const today = new Date();
+    const firstDay = new Date(today);
+    firstDay.setDate(today.getDate() - 30);
+    
+    document.getElementById('report-start').valueAsDate = firstDay;
+    document.getElementById('report-end').valueAsDate = new Date();
+    document.getElementById('report-bank').value = '';
+    document.getElementById('report-status').value = '';
+    
+    if (app) app.generateReport();
+}
+
+function addNewBank() {
+    if (app) app.addNewBank();
+}
+
+function loadBranches() {
+    if (app) app.loadBranches();
+}
+
+function addNewBranch() {
+    if (app) app.addNewBranch();
+}
+
+function saveGeneralSettings() {
+    if (app) app.saveGeneralSettings();
+}
+
+function saveExportSettings() {
+    if (app) app.saveExportSettings();
+}
+
+function saveDepositSlipSettings() {
+    if (app) app.saveDepositSlipSettings();
+}
+
+function testExportFormat() {
+    if (app) app.testExportFormat();
+}
+
+function testSlipPrint() {
+    if (app) app.testSlipPrint();
+}
+
+function backupData() {
+    if (app) app.backupData();
+}
+
+function resetAllData() {
+    if (app) app.resetAllData();
+}
+
+function openFilterModal() {
+    if (app) app.openFilterModal();
+}
+
+function openExportModal() {
+    if (app) app.openExportModal();
+}
+
+function closeExportModal() {
+    if (app) app.closeExportModal();
+}
+
+function showDateRangeExport() {
+    if (app) app.showDateRangeExport();
+}
+
+function openExportSettings() {
+    if (app) app.openExportSettings();
+}
+
+function exportSummaryReport() {
+    alert('Summary report export would be implemented here');
+}
+
+function openManualEntryModal() {
+    if (app) app.openManualEntryModal();
+}
+
+function closeManualEntryModal() {
+    if (app) app.closeManualEntryModal();
+}
+
+function addManualChequeToList() {
+    if (app) app.addManualChequeToList();
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    app = new ChequeProManager();
+    
+    // Set current date in header
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const currentDate = document.getElementById('current-date');
+    if (currentDate) {
+        currentDate.textContent = now.toLocaleDateString('en-US', options);
+    }
+    
+    // Set default dates in forms
+    const today = new Date().toISOString().split('T')[0];
+    const chequeDate = document.getElementById('chequeDate');
+    const depositDate = document.getElementById('depositDate');
+    
+    if (chequeDate) chequeDate.value = today;
+    if (depositDate) depositDate.value = today;
+});
+// ==================== DEPOSIT SLIP DYNAMIC POPULATION ====================
+
+// Populate account number boxes
+function populateAccountNumber(accountNumber) {
+    const display = document.getElementById('account-number-display');
+    const boxes = document.getElementById('account-number-boxes');
+    
+    display.textContent = accountNumber;
+    boxes.innerHTML = ''; // Clear existing boxes
+    
+    for (let char of accountNumber) {
+        const box = document.createElement('div');
+        box.classList.add('account-box');
+        if (char === '.') box.classList.add('dot');
+        else if (char === ' ') box.classList.add('space');
+        else if (char === '/') box.classList.add('slash');
+        else box.classList.add('digit');
+        box.textContent = char;
+        boxes.appendChild(box);
+    }
+}
+
+// Populate account holder name
+function populateHolderName(name) {
+    document.getElementById('holder-name').textContent = name;
+}
+
+// Populate amount
+function populateAmount(amount) {
+    document.getElementById('amount-numbers').textContent = amount.toFixed(2);
+    document.getElementById('amount-words').textContent = numberToWords(amount);
+}
+
+// Helper: convert numbers to words (simplified)
+function numberToWords(amount) {
+    return amount + ' only';
+}
+
+// Populate cheque table
+function populateChequeTable(cheques) {
+    const tbody = document.getElementById('cheque-table-body');
+    tbody.innerHTML = '';
+    
+    cheques.forEach(cheque => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cheque.number}</td>
+            <td>${cheque.bank}</td>
+            <td>${cheque.branch}</td>
+            <td>${cheque.amount.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Update total
+    const total = cheques.reduce((sum, c) => sum + c.amount, 0);
+    document.getElementById('total-amount').textContent = total.toFixed(2);
+}
+
+// Update print time
+function updatePrintTime() {
+    const now = new Date();
+    document.getElementById('print-time').textContent = now.toLocaleTimeString();
+}
+
+// Initialize the deposit slip with data
+function initializeDepositSlip(data) {
+    populateAccountNumber(data.accountNumber);
+    populateHolderName(data.holderName);
+    populateAmount(data.amount);
+    populateChequeTable(data.cheques);
+    updatePrintTime();
+}
+
+// ==================== DEPOSIT SLIP DYNAMIC POPULATION ====================
+
+// Populate account number boxes
+function populateAccountNumber(accountNumber) {
+    const display = document.getElementById('account-number-display');
+    const boxes = document.getElementById('account-number-boxes');
+    
+    display.textContent = accountNumber;
+    boxes.innerHTML = ''; // Clear existing boxes
+    
+    for (let char of accountNumber) {
+        const box = document.createElement('div');
+        box.classList.add('account-box');
+        if (char === '.') box.classList.add('dot');
+        else if (char === ' ') box.classList.add('space');
+        else if (char === '/') box.classList.add('slash');
+        else box.classList.add('digit');
+        box.textContent = char;
+        boxes.appendChild(box);
+    }
+}
+
+// Populate account holder name
+function populateHolderName(name) {
+    document.getElementById('holder-name').textContent = name;
+}
+
+// Populate amount
+function populateAmount(amount) {
+    document.getElementById('amount-numbers').textContent = amount.toFixed(2);
+    document.getElementById('amount-words').textContent = numberToWords(amount);
+}
+
+// Helper: convert numbers to words (simplified)
+function numberToWords(amount) {
+    return amount + ' only';
+}
+
+// Populate cheque table
+function populateChequeTable(cheques) {
+    const tbody = document.getElementById('cheque-table-body');
+    tbody.innerHTML = '';
+    
+    cheques.forEach(cheque => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cheque.number}</td>
+            <td>${cheque.bank}</td>
+            <td>${cheque.branch}</td>
+            <td>${cheque.amount.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Update total
+    const total = cheques.reduce((sum, c) => sum + c.amount, 0);
+    document.getElementById('total-amount').textContent = total.toFixed(2);
+}
+
+// Update print time
+function updatePrintTime() {
+    const now = new Date();
+    document.getElementById('print-time').textContent = now.toLocaleTimeString();
+}
+
+// Initialize the deposit slip with data
+function initializeDepositSlip(data) {
+    populateAccountNumber(data.accountNumber);
+    populateHolderName(data.holderName);
+    populateAmount(data.amount);
+    populateChequeTable(data.cheques);
+    updatePrintTime();
+}
+
