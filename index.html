@@ -12,14 +12,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- Chart.js for Reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .deposit-slip-bg {
-            background-image: url("Account Number_page-0001 (1).jpg");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center top;
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
@@ -206,6 +198,22 @@
                         <h2><i class="fas fa-plus-circle"></i> Add New Cheque</h2>
                     </div>
                     
+                    <!-- Cheque Import Section -->
+                    <div class="import-card">
+                        <h3><i class="fas fa-file-import"></i> Import Cheques</h3>
+                        <p>You can import cheques using an Excel (.xlsx) file. Make sure your file contains columns for Date, Cheque No, Bank, Branch, Payee, Amount, and Status.</p>
+                        
+                        <div class="import-controls">
+                            <input type="file" id="chequeImportFile" accept=".xlsx" class="form-control">
+                            <button class="btn btn-primary" onclick="importChequesFromExcel()">
+                                <i class="fas fa-upload"></i> Import File
+                            </button>
+                        </div>
+
+                        <small class="text-muted">
+                            Supported format: Excel (.xlsx). Invalid rows will be skipped automatically.
+                        </small>
+                    </div>
                     <div class="form-card">
                         <form id="chequeForm">
                             <div class="form-grid">
@@ -317,6 +325,10 @@
                                     </a>
                                 </div>
                             </div>
+                            <button class="btn btn-primary" onclick="document.getElementById('chequeListImport').click()">
+                                <i class="fas fa-file-import"></i> Import Cheques
+                            </button>
+                            <input type="file" id="chequeListImport" accept=".xlsx" style="display:none" onchange="importChequesFromExcelList(event)">
                             <button class="btn btn-outline" onclick="openFilterModal()">
                                 <i class="fas fa-filter"></i> Filter
                             </button>
@@ -364,7 +376,7 @@
                     <!-- Bulk Actions -->
                     <div class="bulk-actions" id="bulk-actions" style="display: none;">
                         <div class="bulk-info">
-                            <span id="selected-count">0</span> cheques selected
+                            <span id="selected-count-left">0</span> cheques selected
                         </div>
                         <div class="bulk-buttons">
                             <button class="btn btn-sm btn-outline" onclick="markSelectedExported()">
@@ -408,175 +420,165 @@
                     </div>
 
                     <div class="deposit-container">
-                        <div class="deposit-left">
-                            <div class="deposit-card">
-                                <h3><i class="fas fa-check-circle"></i> Selected Cheques (Max: 6)</h3>
-                                <div class="selected-list" id="selected-cheques">
-                                    <div class="no-selection">
-                                        <i class="fas fa-receipt"></i>
-                                        <p>No cheques selected</p>
-                                        <small>Select cheques from list or use manual entry</small>
-                                    </div>
-                                </div>
-                                <div class="selected-summary">
-                                    <div class="summary-item">
-                                        <span>Selected:</span>
-                                        <strong id="selected-count">0/6</strong>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span>Total Amount:</span>
-                                        <strong id="selected-amount">LKR 0.00</strong>
-                                    </div>
-                                </div>
+
+    <!-- LEFT SIDE: Deposit Details -->
+    <div class="deposit-input-section">
+        <div class="deposit-card">
+            <h3><i class="fas fa-edit"></i> Deposit Details</h3>
+
+            <form id="depositSlipInputForm">
+                <!-- ===== ACCOUNT HOLDER SECTION ===== -->
+                <h4 class="sub-section-title"><i class="fas fa-user"></i> Account Holder Details</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Account Holder Name *</label>
+                        <input type="text" id="ds-account-holder" class="form-control" placeholder="Account holder name" oninput="app.updateSlipFromForm()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Account Number *</label>
+                        <input type="text" id="ds-account-number" class="form-control" placeholder="Account number" oninput="app.updateSlipFromForm()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Deposit Date *</label>
+                        <input type="date" id="ds-date" class="form-control" oninput="app.updateSlipFromForm()">
+                    </div>
+                </div>
+
+                <!-- ===== CHEQUE INPUT SECTION ===== -->
+                <h4 class="sub-section-title"><i class="fas fa-file-invoice"></i> Cheques</h4>
+
+                <div id="cheque-input-rows">
+                    <div class="cheque-row">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Cheque No *</label>
+                                <input type="text" class="form-control cheque-no" placeholder="123456" onkeyup="app.lookupChequeRow(this)">
                             </div>
 
-                            <div class="deposit-card">
-                                <h3><i class="fas fa-cog"></i> Deposit Details</h3>
-                                <form id="depositForm">
-                                    <div class="form-group">
-                                        <label><i class="fas fa-calendar"></i> Deposit Date *</label>
-                                        <input type="date" id="depositDate" class="form-control" required value="">
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fas fa-user"></i> Account Holder Name *</label>
-                                        <input type="text" id="depositorName" class="form-control" required 
-                                               placeholder="Account holder name" value="John Doe">
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fas fa-id-card"></i> Account Number *</label>
-                                        <input type="text" id="depositorAccount" class="form-control" required 
-                                               placeholder="e.g., 6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1..." 
-                                               value="6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1.1.1.1">
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fas fa-sticky-note"></i> Reference Number</label>
-                                        <input type="text" id="depositRef" class="form-control" placeholder="Optional reference">
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fas fa-exchange-alt"></i> Mode</label>
-                                        <select id="depositMode" class="form-control" onchange="toggleDepositMode()">
-                                            <option value="auto">Auto from Cheques</option>
-                                            <option value="manual">Manual Entry</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <!-- Manual Entry Fields -->
-                                    <div id="manual-entry-fields" style="display: none;">
-                                        <h4 style="margin-top: 20px; margin-bottom: 15px;">
-                                            <i class="fas fa-edit"></i> Manual Cheque Entry
-                                        </h4>
-                                        <div id="manual-cheque-entries">
-                                            <!-- Manual entries will be added here -->
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-outline" onclick="addManualCheque()" style="margin-top: 10px;">
-                                            <i class="fas fa-plus"></i> Add Cheque
-                                        </button>
-                                    </div>
-                                </form>
+                            <div class="form-group">
+                                <label>Branch Code *</label>
+                                <input type="text" class="form-control cheque-branch-code" placeholder="001" oninput="app.updateSlipFromForm()">
                             </div>
-                        </div>
-                        
-                        <div class="deposit-right">
-                            <div class="deposit-card">
-                                <h3><i class="fas fa-print"></i> Deposit Slip Preview</h3>
-                                <div class="slip-container">
-                                    <!-- Custom Deposit Slip Format -->
-                                    <div class="deposit-slip deposit-slip-bg" id="depositSlip">
-                                        <!-- Header -->
-                                        <div class="slip-header">
-                                            <div class="bank-name">YOUR BANK NAME</div>
-                                            <div class="slip-title">DEPOSIT SLIP</div>
-                                            <div class="slip-date">Date: <span id="slip-date"></span></div>
-                                        </div>
-                                        
-                                        <!-- Account Number -->
-                                        <div class="account-section">
-                                            <div class="account-label">Account Number:</div>
-                                            <div class="account-number-display" id="account-display">
-                                                6.4.8 6.3.2.1.0.5 / 6.4.9.1.1.1...
-                                            </div>
-                                            <div class="account-number-boxes" id="account-boxes">
-                                                <!-- Individual boxes will be inserted here -->
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Account Holder -->
-                                        <div class="account-holder-section">
-                                            <div class="account-label">Account Holder:</div>
-                                            <div class="holder-name" id="holder-name">____________________</div>
-                                        </div>
-                                        
-                                        <!-- Amount -->
-                                        <div class="amount-section">
-                                            <div class="amount-label">Amount (in words):</div>
-                                            <div class="amount-words" id="amount-words">
-                                                ____________________________________________________________
-                                            </div>
-                                            <div class="amount-numbers" id="amount-numbers">
-                                                LKR 0.00
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Cheque Table -->
-                                        <div class="cheque-table">
-                                            <table>
-                                                <thead>
-                                                    <tr>
-                                                        <th style="width: 20%;">Cheque No</th>
-                                                        <th style="width: 15%;">Bank Code</th>
-                                                        <th style="width: 40%;">Payee</th>
-                                                        <th style="width: 25%;">Amount</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="slip-cheque-body">
-                                                    <!-- Cheque rows will be inserted here -->
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                    <tr><td>________</td><td>________</td><td>____________________</td><td>________</td></tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        
-                                        <!-- Total -->
-                                        <div class="total-section">
-                                            <div class="total-label">Total Amount:</div>
-                                            <div class="total-amount" id="total-amount-display">LKR 0.00</div>
-                                        </div>
-                                        
-                                        <!-- Signatures -->
-                                        <div class="signature-section">
-                                            <div class="signature depositor-sign">
-                                                <div class="signature-label">Depositor's Signature:</div>
-                                                <div class="signature-line">____________________</div>
-                                            </div>
-                                            <div class="signature teller-sign">
-                                                <div class="signature-label">Teller's Signature:</div>
-                                                <div class="signature-line">____________________</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Footer -->
-                                        <div class="slip-footer">
-                                            <div class="footer-note">* Please ensure all details are correct before submission</div>
-                                            <div class="print-info">Printed: <span id="print-time"></span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="slip-actions">
-                                    <button class="btn btn-sm btn-outline" onclick="refreshSlipPreview()">
-                                        <i class="fas fa-sync"></i> Refresh Preview
-                                    </button>
-                                    <button class="btn btn-sm btn-outline" onclick="resetSlip()">
-                                        <i class="fas fa-redo"></i> Reset
-                                    </button>
-                                </div>
+
+                            <div class="form-group">
+                                <label>Branch Name *</label>
+                                <input type="text" class="form-control cheque-branch-name" placeholder="Colombo" oninput="app.updateSlipFromForm()">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Amount *</label>
+                                <input type="number" class="form-control cheque-amount" placeholder="0.00" step="0.01" oninput="app.updateSlipFromForm()">
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Add New Cheque Line Button -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="app.addChequeLine()">
+                        <i class="fas fa-plus"></i> Add Line
+                    </button>
+                </div>
+
+                <!-- ===== TOTAL SECTION ===== -->
+                <h4 class="sub-section-title"><i class="fas fa-coins"></i> Total Amount</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Total (Rs)</label>
+                        <input type="text" id="ds-total-rs" class="form-control" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Total (Cts)</label>
+                        <input type="text" id="ds-total-cts" class="form-control" readonly>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: Deposit Slip Preview -->
+    <div class="deposit-preview-section">
+        <div class="deposit-card">
+            <h3><i class="fas fa-print"></i> Deposit Slip Preview</h3>
+
+            <div class="slip-container">
+
+    <div class="slip-scale-wrapper">
+        <div class="slip-scale-inner">
+
+            <!-- START SLIP -->
+            <div class="deposit-slip deposit-slip-bg" id="depositSlip" style="background-size: 200mm 103mm; background-repeat: no-repeat; background-position: top center;">
+                <div class="slip-overlay">
+
+
+                        <div id="slip-date-digits" class="slip-field slip-date"></div>
+                        <div id="slip-account-holder" class="slip-field slip-account-holder"></div>
+                        <div id="slip-account-number-digits" class="slip-field slip-account-number"></div>
+
+                        <!-- Rows 1–6 -->
+                        <div id="slip-cheque-no-1" class="slip-field slip-cheque-no" data-row="1"></div>
+                        <div id="slip-branch-code-1" class="slip-field slip-branch-code" data-row="1"></div>
+                        <div id="slip-branch-name-1" class="slip-field slip-branch-name" data-row="1"></div>
+                        <div id="slip-amount-rs-1" class="slip-field slip-amount-rs" data-row="1"></div>
+                        <div id="slip-amount-cts-1" class="slip-field slip-amount-cts" data-row="1"></div>
+
+                        <div id="slip-cheque-no-2" class="slip-field slip-cheque-no" data-row="2"></div>
+                        <div id="slip-branch-code-2" class="slip-field slip-branch-code" data-row="2"></div>
+                        <div id="slip-branch-name-2" class="slip-field slip-branch-name" data-row="2"></div>
+                        <div id="slip-amount-rs-2" class="slip-field slip-amount-rs" data-row="2"></div>
+                        <div id="slip-amount-cts-2" class="slip-field slip-amount-cts" data-row="2"></div>
+
+                        <div id="slip-cheque-no-3" class="slip-field slip-cheque-no" data-row="3"></div>
+                        <div id="slip-branch-code-3" class="slip-field slip-branch-code" data-row="3"></div>
+                        <div id="slip-branch-name-3" class="slip-field slip-branch-name" data-row="3"></div>
+                        <div id="slip-amount-rs-3" class="slip-field slip-amount-rs" data-row="3"></div>
+                        <div id="slip-amount-cts-3" class="slip-field slip-amount-cts" data-row="3"></div>
+
+                        <div id="slip-cheque-no-4" class="slip-field slip-cheque-no" data-row="4"></div>
+                        <div id="slip-branch-code-4" class="slip-field slip-branch-code" data-row="4"></div>
+                        <div id="slip-branch-name-4" class="slip-field slip-branch-name" data-row="4"></div>
+                        <div id="slip-amount-rs-4" class="slip-field slip-amount-rs" data-row="4"></div>
+                        <div id="slip-amount-cts-4" class="slip-field slip-amount-cts" data-row="4"></div>
+
+                        <div id="slip-cheque-no-5" class="slip-field slip-cheque-no" data-row="5"></div>
+                        <div id="slip-branch-code-5" class="slip-field slip-branch-code" data-row="5"></div>
+                        <div id="slip-branch-name-5" class="slip-field slip-branch-name" data-row="5"></div>
+                        <div id="slip-amount-rs-5" class="slip-field slip-amount-rs" data-row="5"></div>
+                        <div id="slip-amount-cts-5" class="slip-field slip-amount-cts" data-row="5"></div>
+
+                        <div id="slip-cheque-no-6" class="slip-field slip-cheque-no" data-row="6"></div>
+                        <div id="slip-branch-code-6" class="slip-field slip-branch-code" data-row="6"></div>
+                        <div id="slip-branch-name-6" class="slip-field slip-branch-name" data-row="6"></div>
+                        <div id="slip-amount-rs-6" class="slip-field slip-amount-rs" data-row="6"></div>
+                        <div id="slip-amount-cts-6" class="slip-field slip-amount-cts" data-row="6"></div>
+
+                        <div id="slip-total-rs" class="slip-field slip-total-rs"></div>
+                        <div id="slip-total-cts" class="slip-field slip-total-cts"></div>
+
+                    </div>
+                </div>
+                <!-- END SLIP -->
+
+            </div> <!-- end slip-scale-inner -->
+        </div> <!-- end slip-scale-wrapper -->
+
+    </div> <!-- end slip-container -->
+
+            <div class="slip-actions">
+                <button class="btn btn-sm btn-outline" onclick="refreshSlipPreview()">
+                    <i class="fas fa-sync"></i> Refresh Preview
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="resetSlip()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
                 </section>
 
                 <!-- Reports -->
@@ -888,7 +890,7 @@
                                         <input type="text" class="form-control" id="defaultAccountHolder" value="John Doe">
                                     </div>
                                     <div class="image">
-                                        <img src="image copy.png" alt="Deposit Slip Preview">
+                                        <img src="image-copy.png" alt="Deposit Slip Preview">
                                     </div>
                                     <div class="form-group">
                                         <label><i class="fas fa-hashtag"></i> Default Account Number Format</label>

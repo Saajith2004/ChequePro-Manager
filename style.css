@@ -792,10 +792,26 @@ textarea.form-control {
 }
 
 /* Deposit Container */
+/* Deposit Container Flex Layout */
 .deposit-container {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 30px;
+    height: auto;
+}
+
+/* Input section flex sizing */
+.deposit-input-section {
+    flex: 1;
+    min-width: 45%;
+}
+
+/* Preview section flex sizing */
+.deposit-preview-section {
+    flex: 1.3;
+    min-width: 55%;
 }
 
 @media (max-width: 1200px) {
@@ -858,286 +874,119 @@ textarea.form-control {
     margin-top: 5px;
 }
 
-/* ==================== CUSTOM DEPOSIT SLIP STYLES ==================== */
-.slip-container {
-    background: white;
-    border: 1px dashed var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 20px;
-}
-
-.deposit-slip {
-    width: 100%;
-    min-height: 500px;
-    background: white;
-    border: 2px solid #000;
-    padding: 25px;
-    font-family: 'Courier New', monospace;
+/* ==================== CLEAN OVERLAY DEPOSIT SLIP (OPTION A) ==================== */
+.slip-overlay {
     position: relative;
-    margin: 0 auto;
+    width: 200mm;
+    height: 103mm;
+    pointer-events: none; /* prevent accidental dragging */
 }
 
-/* Slip Header */
-.slip-header {
-    text-align: center;
-    margin-bottom: 25px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #000;
-}
-
-.bank-name {
-    font-size: 24px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 5px;
-}
-
-.slip-title {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.slip-date {
-    font-size: 14px;
-    text-align: right;
-    margin-top: -20px;
-}
-
-/* Account Section */
-.account-section {
-    margin: 20px 0;
-    padding: 15px;
-    border: 1px solid #ccc;
-    background: #f9f9f9;
-}
-
-.account-label {
-    font-weight: bold;
-    margin-bottom: 10px;
-    display: block;
-}
-
-.account-number-display {
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    margin-bottom: 10px;
-    padding: 5px;
-    background: white;
-    border: 1px solid #999;
-}
-
-.account-number-boxes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    margin: 10px 0;
-    justify-content: flex-start;
-}
-
-.account-box {
-    width: 28px;
-    height: 35px;
-    border: 1px solid #000;
-    text-align: center;
-    font-size: 16px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
+.slip-field {
+    position: absolute;
     font-family: 'Courier New', monospace;
-}
-
-.account-box.digit {
-    background: #fff;
-}
-
-.account-box.dot {
-    border: none;
-    width: 8px;
-    font-size: 20px;
-    background: transparent;
-}
-
-.account-box.space {
-    border: none;
-    width: 15px;
-    background: transparent;
-}
-
-.account-box.slash {
-    border: none;
-    width: 15px;
-    font-size: 20px;
-    background: transparent;
-}
-
-.account-holder-section {
-    margin: 20px 0;
-    padding: 10px;
-}
-
-.holder-name {
-    font-size: 16px;
-    font-weight: bold;
-    border-bottom: 1px solid #000;
-    padding: 5px 0;
-    min-height: 30px;
-}
-
-/* Amount Section */
-.amount-section {
-    margin: 25px 0;
-    padding: 15px;
-    border: 1px solid #000;
-}
-
-.amount-label {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.amount-words {
     font-size: 14px;
-    border-bottom: 1px solid #000;
-    padding: 8px 0;
-    min-height: 40px;
-    line-height: 1.4;
-}
-
-.amount-numbers {
-    font-size: 18px;
     font-weight: bold;
-    text-align: right;
-    margin-top: 10px;
+    color: #000;
+    white-space: nowrap;
+    pointer-events: auto;
 }
 
-/* Cheque Table */
-.cheque-table {
-    margin: 25px 0;
+/* EXAMPLE POSITIONING (you will adjust manually) */
+.slip-bank-name        { top: 8mm;  left: 70mm; }
+.slip-title            { top: 14mm; left: 80mm; }
+
+.slip-date             { letter-spacing: 4px; }
+.slip-account-holder   { font-size: 16px; }
+.slip-account-number   { letter-spacing: 4px; }
+
+.slip-cheque-no        { font-size: 14px; }
+.slip-branch-code      { font-size: 14px; }
+.slip-branch-name      { font-size: 14px; }
+.slip-amount-rs        { font-size: 14px; letter-spacing: 4px; }
+.slip-amount-cts       { font-size: 14px; letter-spacing: 4px; }
+
+.slip-total-rs         { font-size: 16px; font-weight: bold; letter-spacing: 4px; }
+.slip-total-cts        { font-size: 16px; font-weight: bold; letter-spacing: 4px; }
+
+/* ==================== SLIP FIELD POSITIONING (YOU WILL ADJUST MANUALLY) ==================== */
+
+/* DATE (DDMMYYYY) */
+#slip-date-digits {
+    top: 14mm;
+    left: 144mm;
+    letter-spacing: 9px;
 }
 
-.cheque-table table {
-    width: 100%;
-    border-collapse: collapse;
-    border: 1px solid #000;
-    min-width: auto;
-}
-
-.cheque-table th {
-    background: #f0f0f0;
-    border: 1px solid #000;
-    padding: 8px;
-    text-align: left;
-    font-size: 12px;
-    text-transform: uppercase;
-}
-
-.cheque-table td {
-    border: 1px solid #000;
-    padding: 10px;
-    font-size: 14px;
-    height: 35px;
-}
-
-/* Total Section */
-.total-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 20px 0;
-    padding: 15px;
-    border: 2px solid #000;
-    background: #f0f0f0;
-}
-
-.total-label {
+/* ACCOUNT HOLDER */
+#slip-account-holder {
+    top: 13mm;
+    left: 50mm;
     font-size: 16px;
-    font-weight: bold;
 }
 
-.total-amount {
-    font-size: 20px;
-    font-weight: bold;
+/* ACCOUNT NUMBER (10 digits continuous, spaced via CSS) */
+#slip-account-number-digits {
+    top: 6mm;
+    left: 144mm;
+    letter-spacing: 11px;
 }
 
-/* Signature Section */
-.signature-section {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 40px;
-    padding-top: 20px;
-    border-top: 1px solid #000;
+/* ==================== CHEQUE ROWS ==================== */
+
+/* --- ROW 1 --- */
+#slip-cheque-no-1     { top: 30mm; left: 58mm; text-align: center; }
+#slip-branch-code-1   { top: 30mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-1   { top: 30mm; left: 123mm; text-align: center; }
+#slip-amount-rs-1     { top: 30mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-1    { top: 30mm; left: 185mm; letter-spacing: 4px; }
+
+/* --- ROW 2 --- */
+#slip-cheque-no-2     { top: 34.5mm; left: 58mm; text-align: center; }
+#slip-branch-code-2   { top: 34.5mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-2   { top: 34.5mm; left: 123mm; text-align: center; }
+#slip-amount-rs-2     { top: 34.5mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-2    { top: 34.5mm; left: 185mm; letter-spacing: 4px; }
+
+/* --- ROW 3 --- */
+#slip-cheque-no-3     { top: 39mm; left: 58mm; text-align: center; }
+#slip-branch-code-3   { top: 39mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-3   { top: 39mm; left: 123mm; text-align: center; }
+#slip-amount-rs-3     { top: 39mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-3    { top: 39mm; left: 185mm; letter-spacing: 4px; }
+
+/* --- ROW 4 --- */
+#slip-cheque-no-4     { top: 43.5mm; left: 58mm; text-align: center; }
+#slip-branch-code-4   { top: 43.5mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-4   { top: 43.5mm; left: 123mm; text-align: center; }
+#slip-amount-rs-4     { top: 43.5mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-4    { top: 43.5mm; left: 185mm; letter-spacing: 4px; }
+
+/* --- ROW 5 --- */
+#slip-cheque-no-5     { top: 48mm; left: 58mm; text-align: center; }
+#slip-branch-code-5   { top: 48mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-5   { top: 48mm; left: 123mm; text-align: center; }
+#slip-amount-rs-5     { top: 48mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-5    { top: 48mm; left: 185mm; letter-spacing: 4px; }
+
+/* --- ROW 6 --- */
+#slip-cheque-no-6     { top: 52.5mm; left: 58mm; text-align: center; }
+#slip-branch-code-6   { top: 52.5mm; left: 88mm; letter-spacing: 4px; text-align: center; }
+#slip-branch-name-6   { top: 52.5mm; left: 123mm; text-align: center; }
+#slip-amount-rs-6     { top: 52.5mm; left: 144mm; letter-spacing: 9px; }
+#slip-amount-cts-6    { top: 52.5mm; left: 185mm; letter-spacing: 4px; }
+
+/* ==================== TOTAL AMOUNTS ==================== */
+#slip-total-rs {
+    top: 58mm;
+    left: 144mm;
+    letter-spacing: 8px;
 }
 
-.signature {
-    width: 45%;
-}
-
-.signature-label {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.signature-line {
-    border-bottom: 1px solid #000;
-    height: 25px;
-    margin-top: 10px;
-}
-
-/* Slip Footer */
-.slip-footer {
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid #ccc;
-    font-size: 12px;
-    color: #666;
-    display: flex;
-    justify-content: space-between;
-}
-
-.footer-note {
-    font-style: italic;
-}
-
-.print-info {
-    text-align: right;
-}
-
-/* Slip Actions */
-.slip-actions {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* Manual Entry Fields */
-#manual-entry-fields {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px dashed var(--border-color);
-    border-radius: 8px;
-    background: #f9f9f9;
-}
-
-.manual-cheque-entry {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    align-items: center;
-}
-
-.manual-entry-field {
-    flex: 1;
-}
-
-.manual-entry-field.small {
-    flex: 0.5;
+#slip-total-cts {
+    top: 58mm;
+    left: 185mm;
+    letter-spacing: 4px;
 }
 
 /* Reports */
@@ -1653,12 +1502,10 @@ textarea.form-control {
 
 /* ==================== DEPOSIT SLIP FIXED SIZE + BACKGROUND ==================== */
 .deposit-slip-bg {
-    background-image: url("Account Number_page-0001 (1).jpg");
+    background-image: url("account-number-slip.jpg");
     background-size: 200mm 103mm;
     background-repeat: no-repeat;
     background-position: center top;
-    width: 200mm;
-    height: 103mm;
     position: relative;
     overflow: hidden;
 }
@@ -1668,7 +1515,7 @@ textarea.form-control {
     @page { size: 200mm 103mm; margin: 0; }
     body { margin: 0; }
     .deposit-slip-bg {
-        background-image: url("Account Number_page-0001 (1).jpg");
+        background-image: url("account-number-slip.jpg");
         background-size: 200mm 103mm !important;
         width: 200mm !important;
         height: 103mm !important;
@@ -1678,4 +1525,108 @@ textarea.form-control {
     body * { visibility: hidden; }
     .deposit-slip-bg, .deposit-slip-bg * { visibility: visible; }
     .deposit-slip-bg { position: absolute; left: 0; top: 0; }
+}
+/* ==================== DEPOSIT SLIP GENERATOR — NEW SECTIONS STYLING ==================== */
+
+/* Section Titles (Account Holder, Cheques, Totals) */
+.sub-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 25px 0 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Cheque Rows Container */
+#cheque-input-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Individual Cheque Row Box */
+.cheque-row {
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: 0.2s ease;
+}
+
+.cheque-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Grid layout inside each cheque row */
+.cheque-row .form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .cheque-row .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Add Line Button Styling */
+.add-line-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.add-line-btn:hover {
+    background: var(--secondary-color);
+    box-shadow: var(--box-shadow);
+    transform: translateY(-2px);
+}
+
+/* === PERFECT SCALING FOR DEPOSIT SLIP PREVIEW === */
+.slip-scale-wrapper {
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+    transform-origin: top left;
+}
+
+/* Maintain aspect ratio of 200mm × 103mm = 1.94 ratio */
+.slip-scale-inner {
+    position: relative;
+    width: 200mm;
+    height: 103mm;
+    transform-origin: top left;
+}
+
+/* Scale the entire slip as the container shrinks */
+@media screen {
+    .deposit-preview-section {
+        display: flex;
+        justify-content: center;
+    }
+
+    .slip-scale-wrapper {
+        /* Change min/max width as needed */
+        max-width: 100%;
+    }
+
+    .slip-scale-inner {
+        transform: scale(var(--slip-scale));
+    }
 }
