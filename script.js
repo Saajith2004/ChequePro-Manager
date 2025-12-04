@@ -2090,24 +2090,41 @@ class ChequeProManager {
                 let importedCount = 0;
 
                 rows.forEach(row => {
+
+                    // Option A Columns:
+                    const chequeDateRaw = row["Date"] || "";
                     const chequeNumber = (row["Cheque Number"] || "").toString().trim();
+                    const bankName = (row["Bank Name"] || "").toString().trim();
+                    const branch = (row["Bank Branch"] || "").toString().trim();
+                    const bankCode = (row["Bank Code"] || "").toString().trim();
+                    const payee = (row["Payee"] || "").toString().trim();
                     const amount = parseFloat(row["Amount"]) || 0;
 
-                    if (!chequeNumber || amount <= 0) return;
+                    // Validation
+                    if (!chequeNumber || amount <= 0 || !bankName) return;
 
+                    // Parse date
+                    let chequeDate = "";
+                    if (chequeDateRaw) {
+                        try {
+                            chequeDate = new Date(chequeDateRaw).toISOString().split("T")[0];
+                        } catch {
+                            chequeDate = "";
+                        }
+                    }
+
+                    // Create cheque object
                     const cheque = {
                         id: Date.now().toString() + Math.random(),
-                        chequeDate: row["Date"]
-                            ? new Date(row["Date"]).toISOString().split("T")[0]
-                            : "",
-                        chequeNumber: chequeNumber,
-                        bankName: row["Bank Name"] || "",
-                        branch: row["Bank Branch"] || "",
-                        bankCode: row["Bank Code"] || "",
-                        payee: row["Payee"] || "",
-                        accountHolder: row["Payee"] || "",
+                        chequeDate,
+                        chequeNumber,
+                        bankName,
+                        branch,
+                        bankCode,
+                        payee,
+                        accountHolder: payee,
                         accountNumber: "",
-                        amount: amount,
+                        amount,
                         amountWords: this.numberToWords(amount) + " Only",
                         status: "pending",
                         notes: "",
@@ -2129,24 +2146,10 @@ class ChequeProManager {
 
             } catch (err) {
                 console.error(err);
-                alert("Error reading Excel file. Please check file format.");
+                alert("Error reading Excel file. Please check file format (Option A expected).");
             }
         };
 
         reader.readAsArrayBuffer(file);
     }
-
-    /**
-     * Handler for Cheque List page import button.
-     * Passes file to main import function.
-     */
-    importChequesFromExcelList(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        this.importChequesFromExcel(file);
-
-        // Reset input so same file can be selected again
-        event.target.value = "";
-    };
 }
