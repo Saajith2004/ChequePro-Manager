@@ -336,68 +336,78 @@
                     </div>
 
                     <!-- FILTER BUTTON (Option A) -->
-                    <div class="cheque-filter-header" style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-                        <button id="filter-btn" class="btn btn-secondary">
-                            <i class="fas fa-filter"></i> Filter
-                        </button>
+                    <button id="open-filter-btn" class="btn btn-outline">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
 
-                        <!-- FILTER DROPDOWN -->
-                        <div id="filter-dropdown" class="filter-dropdown hidden">
-                            <div class="filter-group">
-                                <label>Status</label>
-                                <select id="filter-status">
-                                    <option value="">All</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="deposited">Deposited</option>
-                                    <option value="RTN">RTN</option>
-                                </select>
-                            </div>
+                    <div id="filter-overlay" class="filter-overlay"></div>
 
-                            <div class="filter-group">
-                                <label>Bank</label>
-                                <select id="filter-bank">
-                                    <option value="">All Banks</option>
-                                </select>
-                            </div>
+                    <div id="filter-panel" class="filter-panel">
+                        <h3>
+                            Filters
+                            <span id="filter-close" class="filter-close-btn">✕</span>
+                        </h3>
 
-                            <div class="filter-group">
-                                <label>Amount Range</label>
-                                <select id="filter-amount">
-                                    <option value="">All</option>
-                                    <option value="0-5000">Below 5,000</option>
-                                    <option value="5000-25000">5,000 – 25,000</option>
-                                    <option value="25000-100000">25,000 – 100,000</option>
-                                    <option value="100000+">Above 100,000</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
-
-                            <div id="custom-amount-box" class="filter-group hidden">
-                                <label>Custom Range (LKR)</label>
-                                <input type="number" id="custom-min" placeholder="Min">
-                                <input type="number" id="custom-max" placeholder="Max">
-                            </div>
-
-                            <div class="filter-group">
-                                <label>Date</label>
-                                <select id="filter-date">
-                                    <option value="">All</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">This Week</option>
-                                    <option value="month">This Month</option>
-                                    <option value="custom-date">Custom Range</option>
-                                </select>
-                            </div>
-
-                            <div id="custom-date-box" class="filter-group hidden">
-                                <label>Custom Date Range</label>
-                                <input type="date" id="custom-date-start">
-                                <input type="date" id="custom-date-end">
-                            </div>
-
-                            <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
-                            <button id="clear-filters" class="btn btn-danger">Reset</button>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="filter-status">
+                                <option value="All">All</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Deposited">Deposited</option>
+                                <option value="Cleared">Cleared</option>
+                                <option value="Bounced">Bounced</option>
+                            </select>
                         </div>
+
+                        <div class="form-group">
+                            <label>Bank</label>
+                            <select id="filter-bank">
+                                <option value="All">All Banks</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Amount Range</label>
+                            <select id="filter-amount-type">
+                                <option value="All">All</option>
+                                <option value="below">Below</option>
+                                <option value="between">Custom Range</option>
+                                <option value="above">Above</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Min Amount</label>
+                            <input type="number" id="filter-min" placeholder="Min (LKR)">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Max Amount</label>
+                            <input type="number" id="filter-max" placeholder="Max (LKR)">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date</label>
+                            <select id="filter-date-type">
+                                <option value="All">All</option>
+                                <option value="today">Today</option>
+                                <option value="this-month">This Month</option>
+                                <option value="range">Custom Range</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>From Date</label>
+                            <input type="date" id="filter-date-from">
+                        </div>
+
+                        <div class="form-group">
+                            <label>To Date</label>
+                            <input type="date" id="filter-date-to">
+                        </div>
+
+                        <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
+                        <button id="clear-filters" class="btn btn-danger">Reset</button>
                     </div>
                     <!-- Search and Filters -->
                     <div class="search-filters">
@@ -467,184 +477,27 @@
                 <section id="deposit-slip" class="page-section">
                     <div class="section-header">
                         <h2><i class="fas fa-file-invoice"></i> Deposit Slip Generator</h2>
-                        <div class="header-actions">
-                            <button class="btn btn-outline" onclick="clearSelected()">
-                                <i class="fas fa-times"></i> Clear Selection
-                            </button>
-                            <button class="btn btn-outline" onclick="enableManualEntry()">
-                                <i class="fas fa-keyboard"></i> Manual Entry
-                            </button>
-                            <button class="btn btn-primary" onclick="printDepositSlip()">
-                                <i class="fas fa-print"></i> Print Slip
-                            </button>
-                            <button class="btn btn-success" onclick="saveDepositSlipPDF()">
-                                <i class="fas fa-file-pdf"></i> Save as PDF
-                            </button>
+                    </div>
+
+                    <!-- Hide all old deposit slip UI -->
+                    <div id="deposit-slip-hidden-contents" style="display: none !important;">
+                        <!-- Your old deposit slip builder stays here untouched -->
+                    </div>
+
+                    <!-- Coming Soon -->
+                    <div class="coming-soon-container">
+                        <div class="coming-soon-card">
+                            <div class="loader-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+
+                            <h2 class="coming-title">Deposit Slip System</h2>
+                            <p class="coming-desc">Coming Soon — A faster, smarter, fully automated slip generator.</p>
                         </div>
                     </div>
-
-                    <div class="deposit-container">
-
-    <!-- LEFT SIDE: Deposit Details -->
-    <div class="deposit-input-section">
-        <div class="deposit-card">
-            <h3><i class="fas fa-edit"></i> Deposit Details</h3>
-
-            <form id="depositSlipInputForm">
-                <!-- ===== ACCOUNT HOLDER SECTION ===== -->
-                <h4 class="sub-section-title"><i class="fas fa-user"></i> Account Holder Details</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Account Holder Name *</label>
-                        <input type="text" id="ds-account-holder" class="form-control" placeholder="Account holder name" oninput="app.updateSlipFromForm()">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Account Number *</label>
-                        <input type="text" id="ds-account-number" class="form-control" placeholder="Account number" oninput="app.updateSlipFromForm()">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Deposit Date *</label>
-                        <input type="date" id="ds-date" class="form-control" oninput="app.updateSlipFromForm()">
-                    </div>
-                </div>
-
-                <!-- ===== CHEQUE INPUT SECTION ===== -->
-                <h4 class="sub-section-title"><i class="fas fa-file-invoice"></i> Cheques</h4>
-
-                <div id="cheque-input-rows">
-                    <div class="cheque-row">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Cheque No *</label>
-                                <input type="text" class="form-control cheque-no" placeholder="123456" onkeyup="app.lookupChequeRow(this)">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Branch Code *</label>
-                                <input type="text" maxlength="10" class="form-control cheque-branch-code" placeholder="001" oninput="app.updateSlipFromForm()">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Branch Name *</label>
-                                <input type="text" class="form-control cheque-branch-name" placeholder="Colombo" oninput="app.updateSlipFromForm()">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Amount *</label>
-                                <input type="number" maxlength="9" class="form-control cheque-amount" placeholder="0.00" step="0.01" oninput="app.updateSlipFromForm()">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Add New Cheque Line Button -->
-                <div class="form-actions">
-                    <button type="button" class="btn btn-primary" onclick="app.addChequeLine()">
-                        <i class="fas fa-plus"></i> Add Line
-                    </button>
-                </div>
-
-                <!-- ===== TOTAL SECTION ===== -->
-                <h4 class="sub-section-title"><i class="fas fa-coins"></i> Total Amount</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Total (Rs)</label>
-                        <input type="text" id="ds-total-rs" class="form-control" readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Total (Cts)</label>
-                        <input type="text" id="ds-total-cts" class="form-control" readonly>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- RIGHT SIDE: Deposit Slip Preview -->
-    <div class="deposit-preview-section">
-        <div class="deposit-card">
-            <h3><i class="fas fa-print"></i> Deposit Slip Preview</h3>
-
-            <div class="slip-container">
-
-    <div class="slip-scale-wrapper">
-        <div class="slip-scale-inner">
-
-            <!-- START SLIP -->
-            <div class="deposit-slip deposit-slip-bg" id="depositSlip" style="background-size: 200mm 103mm; background-repeat: no-repeat; background-position: top center;">
-                <div class="slip-overlay">
-
-
-                        <div id="slip-date-digits" class="slip-field slip-date"></div>
-                        <div id="slip-account-holder" class="slip-field slip-account-holder"></div>
-                        <div id="slip-account-number-digits" class="slip-field slip-account-number"></div>
-
-                        <!-- Rows 1–6 -->
-                        <div id="slip-cheque-no-1" class="slip-field slip-cheque-no" data-row="1"></div>
-                        <div id="slip-branch-code-1" class="slip-field slip-branch-code" data-row="1"></div>
-                        <div id="slip-branch-name-1" class="slip-field slip-branch-name" data-row="1"></div>
-                        <div id="slip-amount-rs-1" class="slip-field slip-amount-rs" data-row="1"></div>
-                        <div id="slip-amount-cts-1" class="slip-field slip-amount-cts" data-row="1"></div>
-
-                        <div id="slip-cheque-no-2" class="slip-field slip-cheque-no" data-row="2"></div>
-                        <div id="slip-branch-code-2" class="slip-field slip-branch-code" data-row="2"></div>
-                        <div id="slip-branch-name-2" class="slip-field slip-branch-name" data-row="2"></div>
-                        <div id="slip-amount-rs-2" class="slip-field slip-amount-rs" data-row="2"></div>
-                        <div id="slip-amount-cts-2" class="slip-field slip-amount-cts" data-row="2"></div>
-
-                        <div id="slip-cheque-no-3" class="slip-field slip-cheque-no" data-row="3"></div>
-                        <div id="slip-branch-code-3" class="slip-field slip-branch-code" data-row="3"></div>
-                        <div id="slip-branch-name-3" class="slip-field slip-branch-name" data-row="3"></div>
-                        <div id="slip-amount-rs-3" class="slip-field slip-amount-rs" data-row="3"></div>
-                        <div id="slip-amount-cts-3" class="slip-field slip-amount-cts" data-row="3"></div>
-
-                        <div id="slip-cheque-no-4" class="slip-field slip-cheque-no" data-row="4"></div>
-                        <div id="slip-branch-code-4" class="slip-field slip-branch-code" data-row="4"></div>
-                        <div id="slip-branch-name-4" class="slip-field slip-branch-name" data-row="4"></div>
-                        <div id="slip-amount-rs-4" class="slip-field slip-amount-rs" data-row="4"></div>
-                        <div id="slip-amount-cts-4" class="slip-field slip-amount-cts" data-row="4"></div>
-
-                        <div id="slip-cheque-no-5" class="slip-field slip-cheque-no" data-row="5"></div>
-                        <div id="slip-branch-code-5" class="slip-field slip-branch-code" data-row="5"></div>
-                        <div id="slip-branch-name-5" class="slip-field slip-branch-name" data-row="5"></div>
-                        <div id="slip-amount-rs-5" class="slip-field slip-amount-rs" data-row="5"></div>
-                        <div id="slip-amount-cts-5" class="slip-field slip-amount-cts" data-row="5"></div>
-
-                        <div id="slip-cheque-no-6" class="slip-field slip-cheque-no" data-row="6"></div>
-                        <div id="slip-branch-code-6" class="slip-field slip-branch-code" data-row="6"></div>
-                        <div id="slip-branch-name-6" class="slip-field slip-branch-name" data-row="6"></div>
-                        <div id="slip-amount-rs-6" class="slip-field slip-amount-rs" data-row="6"></div>
-                        <div id="slip-amount-cts-6" class="slip-field slip-amount-cts" data-row="6"></div>
-
-                        <div id="slip-total-rs" class="slip-field slip-total-rs"></div>
-                        <div id="slip-total-cts" class="slip-field slip-total-cts"></div>
-
-                    </div>
-                </div>
-                <!-- END SLIP -->
-
-            </div> <!-- end slip-scale-inner -->
-        </div> <!-- end slip-scale-wrapper -->
-
-    </div> <!-- end slip-container -->
-
-            <div class="slip-actions">
-                <button class="btn btn-sm btn-outline" onclick="refreshSlipPreview()">
-                    <i class="fas fa-sync"></i> Refresh Preview
-                </button>
-                <button class="btn btn-sm btn-outline" onclick="resetSlip()">
-                    <i class="fas fa-redo"></i> Reset
-                </button>
-            </div>
-        </div>
-    </div>
-
-</div>
                 </section>
 
+                
                 <!-- Reports -->
                 <section id="reports" class="page-section">
                     <div class="section-header">

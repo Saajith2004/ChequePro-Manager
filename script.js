@@ -280,37 +280,7 @@ class ChequeProManager {
             });
         }
         
-        // ==================== FILTER ENGINE EVENTS ====================
-        const filterBtn = document.getElementById('filter-btn');
-        const filterDropdown = document.getElementById('filter-dropdown');
-        const filterAmount = document.getElementById('filter-amount');
-        const applyFiltersBtn = document.getElementById('apply-filters');
-        const clearFiltersBtn = document.getElementById('clear-filters');
-
-        if (filterBtn && filterDropdown) {
-            filterBtn.addEventListener('click', () => {
-                filterDropdown.classList.toggle('hidden');
-            });
-        }
-
-        if (filterAmount) {
-            filterAmount.addEventListener('change', () => {
-                const customBox = document.getElementById('custom-amount-box');
-                if (filterAmount.value === "custom") {
-                    customBox.classList.remove('hidden');
-                } else {
-                    customBox.classList.add('hidden');
-                }
-            });
-        }
-
-        if (applyFiltersBtn) {
-            applyFiltersBtn.addEventListener('click', () => this.applyChequeFilters());
-        }
-
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => this.clearChequeFilters());
-        }
+        // Old filter dropdown logic removed — now using only sidebar filter panel.
 
         // ========== NEW FILTER SIDEBAR ENGINE ==========
         // Sidebar elements
@@ -691,6 +661,70 @@ class ChequeProManager {
         }
 
         this.renderFilteredCheques(filtered);
+
+        // Save filtered list for export
+        this.filteredCheques = filtered;
+
+        // ===== Update Filter Badges =====
+        let amountLabel = "";
+        if (amountRange === "custom") {
+            amountLabel = `${customMin || 0} - ${customMax || 0}`;
+        } else if (amountRange) {
+            amountLabel = amountRange;
+        }
+
+        let dateLabel = "";
+        if (dateFilter === "today") dateLabel = "Today";
+        else if (dateFilter === "week") dateLabel = "This Week";
+        else if (dateFilter === "month") dateLabel = "This Month";
+        else if (dateFilter === "custom-date") dateLabel = "Custom Range";
+
+        this.updateFilterBadges({
+            Status: status || "",
+            Bank: bank || "",
+            Amount: amountLabel,
+            Date: dateLabel
+        });
+
+        // Animate refresh
+        this.animateChequeList();
+    }
+
+    // ===== FILTER BADGES =====
+    updateFilterBadges(activeFilters) {
+        const bar = document.getElementById("filter-badges");
+        if (!bar) return;
+        bar.innerHTML = "";
+        Object.entries(activeFilters).forEach(([label, value]) => {
+            if (!value) return;
+            const badge = document.createElement("span");
+            badge.className = "filter-badge";
+            badge.textContent = `${label}: ${value}`;
+            bar.appendChild(badge);
+        });
+    }
+
+    // ===== SAVE FILTER PRESET =====
+    saveFilterPreset() {
+        const preset = {
+            status: document.getElementById("filter-status")?.value || "",
+            bank: document.getElementById("filter-bank")?.value || "",
+            amount: document.getElementById("filter-amount")?.value || "",
+            customMin: document.getElementById("custom-min")?.value || "",
+            customMax: document.getElementById("custom-max")?.value || "",
+            date: document.getElementById("filter-date")?.value || "",
+            dateStart: document.getElementById("custom-date-start")?.value || "",
+            dateEnd: document.getElementById("custom-date-end")?.value || ""
+        };
+        localStorage.setItem("filterPreset", JSON.stringify(preset));
+    }
+
+    // ===== ANIMATED REFRESH =====
+    animateChequeList() {
+        const tbody = document.getElementById("cheques-body");
+        if (!tbody) return;
+        tbody.style.opacity = "0";
+        setTimeout(() => { tbody.style.opacity = "1"; }, 150);
     }
 
     renderFilteredCheques(list) {
@@ -734,6 +768,7 @@ class ChequeProManager {
         customBoxes.forEach(box => box.classList.add("hidden"));
         this.loadCheques();
     }
+    
 
     // ==================== CHEQUE MANAGEMENT ====================
     
